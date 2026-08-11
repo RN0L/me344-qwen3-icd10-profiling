@@ -1,8 +1,8 @@
 # Backend feasibility — what would not run, and why
 
-Not every backend produced a results record. This file states what was attempted, what
-stopped it, and the evidence, so that a missing column in the comparison is a finding
-rather than a gap.
+All three backends eventually produced a record, but two of them only after the obstacle was
+understood. This file states what was attempted, what stopped it, and the evidence — because
+what a backend refuses to do is a measurement too.
 
 Every observation here is from a real attempt on the assigned hardware. Where a run
 produced no JSON record, the reason is quoted from the system that killed it.
@@ -200,9 +200,68 @@ There is no trust path between them, which is why Lab 4 pulls from the public
 credential that is not ours to create: an `imagePullSecret` from a service-account key, making
 a shared course repository public, or a third-party registry.
 
-**This is where the GPU row stops.** Not at the accelerator, which was idle and available the
-whole time, and not at the code, which was built correctly for the architecture — but at an
-authorization boundary between two administrative domains.
+**This is where the private-image route stops.** Not at the accelerator, which was idle and
+available the whole time, and not at the code, which was built correctly for the architecture —
+but at an authorization boundary between two administrative domains.
+
+### The route that worked: no registry, no credential
+
+The RBAC persona cannot create secrets (`kubectl auth can-i create secrets` → `no`), so an
+`imagePullSecret` is out. It *can* create ConfigMaps and Jobs. And a 30-second probe Job,
+using the public image Lab 4 already pulls, answered the question that should have been asked
+first:
+
+```
+ARCH   aarch64
+GPU    NVIDIA GH200 480GB, 97871 MiB
+HF     307        (huggingface.co reachable)
+PYPI   200
+```
+
+The pod has full egress. That removes the need for a private image entirely: public base
+image, source mounted from a ConfigMap (273 KB, well under the 1 MiB limit), dependencies from
+PyPI, model from Hugging Face, corpus from Zenodo. `manifests/gpu-train-public.yaml`.
+
+⚠️ **A methodological note against ourselves.** The earlier conclusion that `nvcr.io` was
+unreachable came from running `docker manifest inspect` **on the node**. The node's network is
+not the cluster's network, and Lab 4 pulls `nvcr.io/nvidia/pytorch` on this very cluster. One
+unchecked inference nearly closed a row that was open the whole time.
+
+### What it took, in order
+
+| # | Attempt died at | Cause |
+|---|---|---|
+| 1 | `ContainerCreating`, 31 min | ConfigMap named `qwen3-src-lharnold`, manifest wanted `qwen3-src-team-lharnold` |
+| 2 | after full setup | `envsubst` with no variable list blanked the script's own `$started`/`$s2r`/`$rc`, so `--submit-to-running-s` got `''` |
+| 3 | `jax_init` | `--no-deps` dropped 25 legitimate requirements: `ModuleNotFoundError: metrax` |
+| 4 | XLA compile | CUDA libs under `pip --target` are importable but not on `ld.so`'s path: `RET_CHECK failure … dnn_support != nullptr` |
+| 5 | — | ✅ ran |
+
+Attempt 4 is the one that matters: it printed `[DEVICES] 1 device(s): platform=gpu kind=NVIDIA
+GH200 480GB`, loaded the checkpoint in 1.6 s and applied LoRA in 0.09 s. The aarch64 port was
+never the obstacle — everything after it was environment plumbing.
+
+### The result
+
+| Backend | Model | step_s | tokens/s | peak memory | speedup |
+|---|---|---|---|---|---|
+| CPU 32-core x86_64 | Qwen3-0.6B | 18.9899 | 54 | 23.2 / 33.4 GB | 1.0× |
+| TPU v5e 2x4 (8 chips) | Qwen3-0.6B | 0.0800 | 12 804 | 11.7 / 16.9 GB | 237.5× |
+| GPU GH200 (1 chip) | Qwen3-0.6B | **0.0798** | 12 834 | **5.2 / 102.6 GB** | 238.0× |
+
+**One GH200 matches an eight-chip v5e slice to within 0.3 %**, at 5.0 % memory occupancy
+against the TPU's 69.4 %. At bs=1 this workload occupies neither accelerator: it is
+latency-bound, and the v5e's eight chips buy nothing a single Hopper does not already deliver.
+The TPU's real advantage in this project lies elsewhere — it is the platform that still runs
+when the model grows to 4B.
+
+### And the portability finding, sharpened
+
+`libtpu` is not evidence that the stack is TPU-bound. **Exactly one of google-tunix's 36
+declared requirements is** — `jax[tpu]`. Substituting `jax[cuda12]` and reproducing the other
+35 verbatim (from `importlib.metadata.requires`, not from guesswork) is the entire port. Not
+the framework, not the model code, not the architecture: one extra pin in a dependency graph
+decided whether a library was portable.
 
 The chain is worth stating in full, because four of its five links were solvable:
 
@@ -231,4 +290,4 @@ out to be two backends, and the wall was in the dependency graph rather than in 
 |---|---|---|
 | TPU v5e 2x4 | 6 runs, 5 `ok` + 1 `oom` | HBM boundary between bs=16 and bs=32 |
 | CPU 32-core | 1 run, at **Qwen3-0.6B** | the 4B fine-tune exceeds 31 GiB host RAM at every configuration tried |
-| GPU GH200 | none | 5 blockers, 4 solved; stopped at a 403 from the cluster to the Artifact Registry |
+| GPU GH200 | 1 run, at **Qwen3-0.6B** | 0.0798 s/step — matches an 8-chip v5e slice at 5% memory |
