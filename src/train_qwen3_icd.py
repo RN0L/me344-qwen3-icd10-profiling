@@ -1068,7 +1068,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                    help="override JAX_PLATFORMS; empty derives it from --backend")
 
     p.add_argument("--model-path", default=env_str("MODEL_PATH"),
-                   help="Qwen3-4B HF safetensors dir, e.g. /gcs/teams/$TEAM/models/Qwen3-4B")
+                   help="Qwen3 HF safetensors dir, e.g. /gcs/teams/$TEAM/models/Qwen3-4B")
+    p.add_argument("--model-config", default=env_str("MODEL_CONFIG") or "qwen3_4b",
+                   help="tunix ModelConfig factory name; must match the checkpoint at "
+                        "--model-path. qwen3_4b for Qwen3-4B, qwen3_0p6b for Qwen3-0.6B.")
     p.add_argument("--data-root", default=env_str("DATA_ROOT", "DATA_PATH"),
                    help="dataset root: <root>/<split>.jsonl from src/prepare_data.py, or the raw "
                         "CodiEsp bundle (<root>/<split>/text_files/*.txt + *_processed.tsv)")
@@ -1292,9 +1295,23 @@ def train(run: Run) -> None:  # noqa: C901 - a linear pipeline reads better than
                [getattr(d, "coords", None) for d in devices])
 
         run.hardware = detect_hardware(a)
+        # The record must state which model actually ran. --model-name defaults to Qwen3-4B, so a
+        # 0.6B run launched with only --model-config would otherwise be filed as a 4B result and
+        # silently corrupt every downstream comparison. Derive it from the config factory whenever
+        # the two disagree, and carry the size into the run_id so filenames stay distinguishable.
+        _SIZE_FROM_CONFIG = {"qwen3_0p6b": "0.6B", "qwen3_1p7b": "1.7B", "qwen3_4b": "4B",
+                             "qwen3_8b": "8B", "qwen3_14b": "14B", "qwen3_32b": "32B"}
+        size = _SIZE_FROM_CONFIG.get(a.model_config)
+        if size and size.lower() not in a.model_name.lower():
+            corrected = f"Qwen/Qwen3-{size}"
+            marker("RUN", "--model-name %r disagrees with --model-config %r; recording %r",
+                   a.model_name, a.model_config, corrected)
+            a.model_name = corrected
+        hw_tag = a.hw_tag or derive_hw_tag(a.backend, run.hardware)
+        if size and size != "4B":
+            hw_tag = f"{hw_tag}-{size.replace('.', 'p').lower()}"
         run.run_id = a.run_id or tel.make_run_id(
-            a.backend, a.hw_tag or derive_hw_tag(a.backend, run.hardware),
-            a.batch_size, a.seq_len, a.variant or None,
+            a.backend, hw_tag, a.batch_size, a.seq_len, a.variant or None,
         )
         marker("RUN", "run_id=%s hardware=%s", run.run_id, run.hardware["label"])
 
@@ -1322,12 +1339,17 @@ def train(run: Run) -> None:  # noqa: C901 - a linear pipeline reads better than
         entries = list(model_path.iterdir())
         marker("MODEL", "primed the FUSE cache: %d entries under %s", len(entries), model_path)
 
-        factory = getattr(qwen3_lib.ModelConfig, "qwen3_4b", None)
+        # Model size is a knob, not a constant: the 4B fine-tune exceeds the RAM of the 31 GiB
+        # CPU node under every configuration tried (docs/backend-feasibility.md), so the
+        # cross-backend comparison is run a second time at qwen3_0p6b, which fits everywhere.
+        factory = getattr(qwen3_lib.ModelConfig, a.model_config, None)
         assert factory is not None, (
-            "expected tunix.models.qwen3.model.ModelConfig.qwen3_4b(); actual factories: "
+            f"expected tunix.models.qwen3.model.ModelConfig.{a.model_config}(); actual factories: "
             f"{[m for m in dir(qwen3_lib.ModelConfig) if not m.startswith('_')]}"
         )
         config = factory()
+        marker("MODEL", "config factory %s() — %d layers, embed_dim %s",
+               a.model_config, getattr(config, "num_layers", -1), getattr(config, "embed_dim", "?"))
         config = apply_vocab_override(config, model_path)
         config, run.dtype_fields = apply_dtype(config, a.dtype)
         marker("MODEL", "--dtype %s applied to config field(s) %s", a.dtype, run.dtype_fields)

@@ -111,6 +111,7 @@ spec:
               python3 -u "$TRAIN_ENTRYPOINT" \
                 --backend tpu \
                 --model-path "$MODEL_PATH" \
+                --model-config "$MODEL_CONFIG" \
                 --data-root "$DATA_ROOT" \
                 --out "$out" \
                 --run-id "$RUN_ID" \
@@ -156,7 +157,8 @@ spec:
             - { name: SUBMIT_EPOCH, value: "${SUBMIT_EPOCH}" }
             - { name: TRAIN_ENTRYPOINT, value: "${TRAIN_ENTRYPOINT}" }
             # Paths inside the gcsfuse mount.
-            - { name: MODEL_PATH,  value: "/gcs/teams/${TEAM}/models/Qwen3-4B" }
+            - { name: MODEL_PATH,  value: "/gcs/teams/${TEAM}/models/${MODEL_DIR}" }
+            - { name: MODEL_CONFIG, value: "${MODEL_CONFIG}" }
             # DATA_ROOT, not DATA_PATH: the trainer's --data-root wants the RAW CodiEsp layout
             # (<root>/train/text_files/*.txt plus <root>/train/*_annotations_task*_processed.tsv),
             # which is what env.sh stages to ${DATA_GCS_URI}. The jsonl that prepare_data.py

@@ -1,0 +1,19 @@
+{
+  "peft_type": "LORA",
+  "task_type": "CAUSAL_LM",
+  "r": 32,
+  "lora_alpha": 64.0,
+  "lora_dropout": 0.0,
+  "bias": "none",
+  "fan_in_fan_out": false,
+  "base_model_name_or_path": "Qwen/Qwen3-0.6B",
+  "target_modules": [
+    "down_proj",
+    "gate_proj",
+    "k_proj",
+    "o_proj",
+    "q_proj",
+    "up_proj",
+    "v_proj"
+  ]
+}
