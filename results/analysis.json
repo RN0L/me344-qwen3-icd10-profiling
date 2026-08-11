@@ -1,0 +1,1573 @@
+{
+  "generated_by": "profiling/analyze_runs.py",
+  "generated_from": {
+    "results_dir": "results",
+    "n_records": 9,
+    "run_ids": [
+      "cpu-x86-32c-0p6b-bs1-seq1024",
+      "gpu-gh200-0p6b-bs1-seq1024",
+      "tpu-v5e8-bs1-seq1024-filecache-0p6b",
+      "tpu-v5e8-bs16-seq1024-filecache",
+      "tpu-v5e8-bs32-seq1024-filecache",
+      "tpu-v5e8-bs8-seq1024",
+      "tpu-v5e8-bs8-seq1024-filecache",
+      "tpu-v5e8-bs8-seq2048-filecache",
+      "tpu-v5e8-bs8-seq512-filecache"
+    ]
+  },
+  "validation": {
+    "all_records_satisfy_contract": true,
+    "warnings": {},
+    "checks_applied": [
+      "phases sum to total_wall_s within tolerance",
+      "status is one of ok/oom/error/timeout",
+      "tokens_per_s == batch_size*seq_len/median_step_s",
+      "notes scanned for self-reported measurement doubts"
+    ]
+  },
+  "runs": {
+    "cpu-x86-32c-0p6b-bs1-seq1024": {
+      "run_id": "cpu-x86-32c-0p6b-bs1-seq1024",
+      "backend": "cpu",
+      "status": "ok",
+      "source_file": "results/cpu-x86-32c-0p6b-bs1-seq1024.json",
+      "hardware": {
+        "label": "CPU 32-core x86_64",
+        "chips": 32,
+        "chip_model": "Intel(R) Xeon(R) CPU E5-2670 0 @ 2.60GHz"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-0.6B",
+        "batch_size": 1,
+        "seq_len": 1024,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "none",
+        "max_steps": 12,
+        "devices": 1
+      },
+      "measured": {
+        "total_wall_s": 465.97576314397156,
+        "median_step_s": 18.989870027522556,
+        "p10_step_s": 18.751118264719842,
+        "p90_step_s": 19.178576131956653,
+        "tokens_per_s": 53.92348649653145,
+        "docs_per_s": 0.052659654781769,
+        "peak_bytes": 22089531392,
+        "peak_pct": 66.13590688059917,
+        "capacity_bytes": 33400209408,
+        "utilization_mean_pct": 44.27045951859956,
+        "utilization_max_pct": 89.8,
+        "memory_occupancy_mean_pct": 39.06939831631932,
+        "memory_occupancy_max_pct": 65.86350006156225,
+        "micro_f1": null,
+        "tokens_per_s_per_chip": 1.685108953016608
+      },
+      "phases_contract": {
+        "submit_to_running_s": 0.0,
+        "image_pull_s": 0.0,
+        "model_load_s": 2.698754559038207,
+        "compile_s": 116.59926054789685,
+        "steady_state_s": 261.4774506420363,
+        "checkpoint_write_s": 0.16519525088369846,
+        "other_s": 85.03510214411654
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 0.0,
+        "image_pull_s": 0.0,
+        "model_load_s": 0.5791620020812924,
+        "compile_s": 25.022601982814162,
+        "steady_state_s": 56.1139594209427,
+        "checkpoint_write_s": 0.035451468498943886,
+        "other_s": 18.2488251256629
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 0.0,
+          "image_pull_s": 0.0,
+          "process_init_s": 85.03510214411654,
+          "checkpoint_load_s": 2.698754559038207,
+          "compile_s": 97.60939052037429,
+          "straggler_s": 52.58888033928815,
+          "steady_compute_s": 227.87844033027068,
+          "checkpoint_write_s": 0.16519525088369846
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 0.0,
+          "image_pull_s": 0.0,
+          "process_init_s": 18.2488251256629,
+          "checkpoint_load_s": 0.5791620020812924,
+          "compile_s": 20.94731062014831,
+          "straggler_s": 11.28575443161834,
+          "steady_compute_s": 48.90349635199021,
+          "checkpoint_write_s": 0.035451468498943886
+        },
+        "unattributed_s": 0.0,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 12,
+          "compile_excess_s": 97.60939052037429,
+          "recompile_excess_s": 52.51527364959475,
+          "straggler_excess_s": 0.07360668969340622,
+          "second_step_is_recompile": false,
+          "second_step_ratio": 3.7654361811577894,
+          "first_step_cost_in_steady_steps": 6.140076808261786,
+          "longest_step_s": 116.59926054789685,
+          "longest_step_index": 1
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 3.11,
+        "lora_wrap": 9.15,
+        "data_prep": 2.62,
+        "trainer_build": 0.62
+      },
+      "other_s_composition_residual_s": 69.53510214411654,
+      "amortisation": {
+        "fixed_s": 238.09732281370088,
+        "marginal_s_per_step": 18.989870027522556,
+        "n_steps_recorded": 12,
+        "compute_fraction_pct": 48.90349635199021,
+        "overhead_fraction_pct": 51.09650364800979,
+        "fixed_excl_scheduler_s": 238.09732281370088
+      }
+    },
+    "gpu-gh200-0p6b-bs1-seq1024": {
+      "run_id": "gpu-gh200-0p6b-bs1-seq1024",
+      "backend": "gpu",
+      "status": "ok",
+      "source_file": "results/gpu-gh200-0p6b-bs1-seq1024.json",
+      "hardware": {
+        "label": "NVIDIA GH200 480GB",
+        "chips": 1,
+        "chip_model": "GH200"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-0.6B",
+        "batch_size": 1,
+        "seq_len": 1024,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "none",
+        "max_steps": 40,
+        "devices": 1
+      },
+      "measured": {
+        "total_wall_s": 128.89438039716333,
+        "median_step_s": 0.07978639006614685,
+        "p10_step_s": 0.07211801158264279,
+        "p90_step_s": 0.08849752489477396,
+        "tokens_per_s": 12834.26909214784,
+        "docs_per_s": 12.533465910300626,
+        "peak_bytes": 5150605312.0,
+        "peak_pct": 5.018851345137988,
+        "capacity_bytes": 102625181696.0,
+        "utilization_mean_pct": 1.5855855855855856,
+        "utilization_max_pct": 48.0,
+        "memory_occupancy_mean_pct": 4.573090833576575,
+        "memory_occupancy_max_pct": 5.018851345137988,
+        "micro_f1": null,
+        "tokens_per_s_per_chip": 12834.26909214784
+      },
+      "phases_contract": {
+        "submit_to_running_s": 11.0,
+        "image_pull_s": null,
+        "model_load_s": 1.7462770440615714,
+        "compile_s": 40.15919933980331,
+        "steady_state_s": 42.724989145994186,
+        "checkpoint_write_s": 0.4427113700658083,
+        "other_s": 32.82120349723846
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 8.534119149419555,
+        "image_pull_s": null,
+        "model_load_s": 1.3548123965379664,
+        "compile_s": 31.156672010106593,
+        "steady_state_s": 33.147286184506505,
+        "checkpoint_write_s": 0.3434683255403983,
+        "other_s": 25.46364193388898
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 11.0,
+          "image_pull_s": null,
+          "process_init_s": 32.82120349723846,
+          "checkpoint_load_s": 1.7462770440615714,
+          "compile_s": 76.00316439568996,
+          "straggler_s": 3.6895684874616563,
+          "steady_compute_s": 3.191455602645874,
+          "checkpoint_write_s": 0.4427113700658083
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 8.534119149419555,
+          "image_pull_s": null,
+          "process_init_s": 25.46364193388898,
+          "checkpoint_load_s": 1.3548123965379664,
+          "compile_s": 58.965460062340014,
+          "straggler_s": 2.8624742801764964,
+          "steady_compute_s": 2.476023852096589,
+          "checkpoint_write_s": 0.3434683255403983
+        },
+        "unattributed_s": 0.0,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 40,
+          "compile_excess_s": 40.07941294973716,
+          "recompile_excess_s": 35.9237514459528,
+          "straggler_excess_s": 3.6895684874616563,
+          "second_step_is_recompile": true,
+          "second_step_ratio": 451.2491141179622,
+          "first_step_cost_in_steady_steps": 503.33395591039215,
+          "longest_step_s": 40.15919933980331,
+          "longest_step_index": 1
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 6.93,
+        "lora_wrap": 14.35,
+        "data_prep": 2.09,
+        "trainer_build": 1.45
+      },
+      "other_s_composition_residual_s": 8.001203497238457,
+      "amortisation": {
+        "fixed_s": 125.70292479451746,
+        "marginal_s_per_step": 0.07978639006614685,
+        "n_steps_recorded": 40,
+        "compute_fraction_pct": 2.476023852096589,
+        "overhead_fraction_pct": 97.52397614790341,
+        "fixed_excl_scheduler_s": 114.70292479451746
+      }
+    },
+    "tpu-v5e8-bs1-seq1024-filecache-0p6b": {
+      "run_id": "tpu-v5e8-bs1-seq1024-filecache-0p6b",
+      "backend": "tpu",
+      "status": "ok",
+      "source_file": "results/tpu-v5e8-bs1-seq1024-filecache-0p6b.json",
+      "hardware": {
+        "label": "TPU v5e 2x4",
+        "chips": 8,
+        "chip_model": "tpu-v5-lite-podslice"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-0.6B",
+        "batch_size": 1,
+        "seq_len": 1024,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "20Gi",
+        "max_steps": 100,
+        "devices": 8
+      },
+      "measured": {
+        "total_wall_s": 315.08578847700005,
+        "median_step_s": 0.07997379150000938,
+        "p10_step_s": 0.07873315209998281,
+        "p90_step_s": 0.08083556390000694,
+        "tokens_per_s": 12804.194734219645,
+        "docs_per_s": 12.504096420136372,
+        "peak_bytes": 1227664896.0,
+        "peak_pct": 7.260280069908473,
+        "capacity_bytes": 16909332480.0,
+        "utilization_mean_pct": null,
+        "utilization_max_pct": null,
+        "memory_occupancy_mean_pct": 3.3304565737987324,
+        "memory_occupancy_max_pct": 6.20597867622034,
+        "micro_f1": null,
+        "tokens_per_s_per_chip": 1600.5243417774557
+      },
+      "phases_contract": {
+        "submit_to_running_s": 143.0,
+        "image_pull_s": null,
+        "model_load_s": 4.392129561000004,
+        "compile_s": 42.15663687700001,
+        "steady_state_s": 52.67146681799997,
+        "checkpoint_write_s": 1.0403803620000076,
+        "other_s": 71.82517485900007
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 45.38446519317973,
+        "image_pull_s": null,
+        "model_load_s": 1.3939472110848985,
+        "compile_s": 13.379415517522546,
+        "steady_state_s": 16.71654791940728,
+        "checkpoint_write_s": 0.3301895547332663,
+        "other_s": 22.795434604072284
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 143.0,
+          "image_pull_s": null,
+          "process_init_s": 71.82517485900007,
+          "checkpoint_load_s": 4.392129561000004,
+          "compile_s": 81.642957389,
+          "straggler_s": 5.18776715599904,
+          "steady_compute_s": 7.997379150000938,
+          "checkpoint_write_s": 1.0403803620000076
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 45.38446519317973,
+          "image_pull_s": null,
+          "process_init_s": 22.795434604072284,
+          "checkpoint_load_s": 1.3939472110848985,
+          "compile_s": 25.911342362862424,
+          "straggler_s": 1.6464618036486676,
+          "steady_compute_s": 2.5381592704187335,
+          "checkpoint_write_s": 0.3301895547332663
+        },
+        "unattributed_s": 0.0,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 100,
+          "compile_excess_s": 42.0766630855,
+          "recompile_excess_s": 39.5662943035,
+          "straggler_excess_s": 5.18776715599904,
+          "second_step_is_recompile": true,
+          "second_step_ratio": 495.7407589584565,
+          "first_step_cost_in_steady_steps": 527.1306522586848,
+          "longest_step_s": 42.15663687700001,
+          "longest_step_index": 1
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 9.21,
+        "lora_wrap": 11.0,
+        "data_prep": 30.57,
+        "trainer_build": 0.8
+      },
+      "other_s_composition_residual_s": 20.245174859000073,
+      "amortisation": {
+        "fixed_s": 307.0884093269991,
+        "marginal_s_per_step": 0.07997379150000938,
+        "n_steps_recorded": 100,
+        "compute_fraction_pct": 2.5381592704187335,
+        "overhead_fraction_pct": 97.46184072958127,
+        "fixed_excl_scheduler_s": 164.0884093269991
+      }
+    },
+    "tpu-v5e8-bs16-seq1024-filecache": {
+      "run_id": "tpu-v5e8-bs16-seq1024-filecache",
+      "backend": "tpu",
+      "status": "ok",
+      "source_file": "results/tpu-v5e8-bs16-seq1024-filecache.json",
+      "hardware": {
+        "label": "TPU v5e 2x4",
+        "chips": 8,
+        "chip_model": "tpu-v5-lite-podslice"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 16,
+        "seq_len": 1024,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "20Gi",
+        "max_steps": 40,
+        "devices": 8
+      },
+      "measured": {
+        "total_wall_s": 355.508955879,
+        "median_step_s": 3.564989579999974,
+        "p10_step_s": 3.562545470000032,
+        "p90_step_s": 3.565586039999971,
+        "tokens_per_s": 4595.805859269894,
+        "docs_per_s": 4.488091659443256,
+        "peak_bytes": 11071536128.0,
+        "peak_pct": 65.4758911452902,
+        "capacity_bytes": 16909332480.0,
+        "utilization_mean_pct": null,
+        "utilization_max_pct": null,
+        "memory_occupancy_mean_pct": 17.070470101845903,
+        "memory_occupancy_max_pct": 63.53570697546542,
+        "micro_f1": null,
+        "tokens_per_s_per_chip": 574.4757324087368
+      },
+      "phases_contract": {
+        "submit_to_running_s": 5.0,
+        "image_pull_s": null,
+        "model_load_s": 16.29382429200001,
+        "compile_s": 62.896867392000104,
+        "steady_state_s": 192.19296159499993,
+        "checkpoint_write_s": 2.2558031780000647,
+        "other_s": 76.86949942199988
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 1.406434329519897,
+        "image_pull_s": null,
+        "model_load_s": 4.583238768686809,
+        "compile_s": 17.69206270387391,
+        "steady_state_s": 54.06135581586141,
+        "checkpoint_write_s": 0.6345278060358748,
+        "other_s": 21.622380576022103
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 5.0,
+          "image_pull_s": null,
+          "process_init_s": 76.86949942199988,
+          "checkpoint_load_s": 16.29382429200001,
+          "compile_s": 112.77838846200007,
+          "straggler_s": 31.796763545000772,
+          "steady_compute_s": 110.5146769799992,
+          "checkpoint_write_s": 2.2558031780000647
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 1.406434329519897,
+          "image_pull_s": null,
+          "process_init_s": 21.622380576022103,
+          "checkpoint_load_s": 4.583238768686809,
+          "compile_s": 31.723079432177514,
+          "straggler_s": 8.944011963463174,
+          "steady_compute_s": 31.086327124094637,
+          "checkpoint_write_s": 0.6345278060358748
+        },
+        "unattributed_s": 0.0,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 31,
+          "compile_excess_s": 59.33187781200013,
+          "recompile_excess_s": 53.44651064999994,
+          "straggler_excess_s": 31.796763545000772,
+          "second_step_is_recompile": true,
+          "second_step_ratio": 15.992052417163118,
+          "first_step_cost_in_steady_steps": 17.642931621696512,
+          "longest_step_s": 62.896867392000104,
+          "longest_step_index": 1
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 12.6,
+        "lora_wrap": 14.25,
+        "data_prep": 23.61,
+        "trainer_build": 0.95
+      },
+      "other_s_composition_residual_s": 25.459499421999872,
+      "amortisation": {
+        "fixed_s": 244.9942788990008,
+        "marginal_s_per_step": 3.564989579999974,
+        "n_steps_recorded": 31,
+        "compute_fraction_pct": 31.086327124094637,
+        "overhead_fraction_pct": 68.91367287590536,
+        "fixed_excl_scheduler_s": 239.9942788990008
+      }
+    },
+    "tpu-v5e8-bs32-seq1024-filecache": {
+      "run_id": "tpu-v5e8-bs32-seq1024-filecache",
+      "backend": "tpu",
+      "status": "oom",
+      "source_file": "results/tpu-v5e8-bs32-seq1024-filecache.json",
+      "hardware": {
+        "label": "TPU v5e 2x4",
+        "chips": 8,
+        "chip_model": "tpu-v5-lite-podslice"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 32,
+        "seq_len": 1024,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "20Gi",
+        "max_steps": 40,
+        "devices": 8
+      },
+      "measured": {
+        "total_wall_s": 274.342510413,
+        "median_step_s": null,
+        "p10_step_s": null,
+        "p90_step_s": null,
+        "tokens_per_s": null,
+        "docs_per_s": null,
+        "peak_bytes": null,
+        "peak_pct": null,
+        "capacity_bytes": null,
+        "utilization_mean_pct": null,
+        "utilization_max_pct": null,
+        "memory_occupancy_mean_pct": 12.592235886154494,
+        "memory_occupancy_max_pct": 40.592441600627865,
+        "micro_f1": null
+      },
+      "phases_contract": {
+        "submit_to_running_s": 128.0,
+        "image_pull_s": null,
+        "model_load_s": 16.166713113,
+        "compile_s": 0.0,
+        "steady_state_s": 0.0,
+        "checkpoint_write_s": 0.0,
+        "other_s": 130.1757973
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 46.65700543722027,
+        "image_pull_s": null,
+        "model_load_s": 5.892893918868916,
+        "compile_s": 0.0,
+        "steady_state_s": 0.0,
+        "checkpoint_write_s": 0.0,
+        "other_s": 47.45010064391081
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 128.0,
+          "image_pull_s": null,
+          "process_init_s": 130.1757973,
+          "checkpoint_load_s": 16.166713113,
+          "compile_s": 0.0,
+          "straggler_s": 0.0,
+          "steady_compute_s": null,
+          "checkpoint_write_s": 0.0
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 46.65700543722027,
+          "image_pull_s": null,
+          "process_init_s": 47.45010064391081,
+          "checkpoint_load_s": 5.892893918868916,
+          "compile_s": 0.0,
+          "straggler_s": 0.0,
+          "steady_compute_s": null,
+          "checkpoint_write_s": 0.0
+        },
+        "unattributed_s": 0.0,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 0,
+          "compile_excess_s": null,
+          "recompile_excess_s": null,
+          "straggler_excess_s": null,
+          "second_step_is_recompile": null
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 25.0,
+        "lora_wrap": 14.29,
+        "data_prep": 23.83,
+        "trainer_build": 0.94
+      },
+      "other_s_composition_residual_s": 66.1157973,
+      "amortisation": null
+    },
+    "tpu-v5e8-bs8-seq1024-filecache": {
+      "run_id": "tpu-v5e8-bs8-seq1024-filecache",
+      "backend": "tpu",
+      "status": "ok",
+      "source_file": "results/tpu-v5e8-bs8-seq1024-filecache.json",
+      "hardware": {
+        "label": "TPU v5e 2x4",
+        "chips": 8,
+        "chip_model": "tpu-v5-lite-podslice"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 8,
+        "seq_len": 1024,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "20Gi",
+        "max_steps": 100,
+        "devices": 8
+      },
+      "measured": {
+        "total_wall_s": 502.77913751299997,
+        "median_step_s": 1.75122505249999,
+        "p10_step_s": 1.7500597792999826,
+        "p90_step_s": 1.751731213599993,
+        "tokens_per_s": 4677.868209060495,
+        "docs_per_s": 4.56823067291064,
+        "peak_bytes": 11735372288.0,
+        "peak_pct": 69.40174783292214,
+        "capacity_bytes": 16909332480.0,
+        "utilization_mean_pct": null,
+        "utilization_max_pct": null,
+        "memory_occupancy_mean_pct": 20.74018970214848,
+        "memory_occupancy_max_pct": 69.39598874100558,
+        "micro_f1": null,
+        "tokens_per_s_per_chip": 584.7335261325619
+      },
+      "phases_contract": {
+        "submit_to_running_s": 116.0,
+        "image_pull_s": null,
+        "model_load_s": 16.132861827000013,
+        "compile_s": 73.28743271500002,
+        "steady_state_s": 209.10829376299998,
+        "checkpoint_write_s": 2.113552858999981,
+        "other_s": 86.13699634899996
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 23.071760808094524,
+        "image_pull_s": null,
+        "model_load_s": 3.208737320884337,
+        "compile_s": 14.57646653310174,
+        "steady_state_s": 41.59048738524741,
+        "checkpoint_write_s": 0.4203740173975163,
+        "other_s": 17.13217393527447
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 116.0,
+          "image_pull_s": null,
+          "process_init_s": 86.13699634899996,
+          "checkpoint_load_s": 16.132861827000013,
+          "compile_s": 138.538600139,
+          "straggler_s": 35.28117308400061,
+          "steady_compute_s": 108.57595325499938,
+          "checkpoint_write_s": 2.113552858999981
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 23.071760808094524,
+          "image_pull_s": null,
+          "process_init_s": 17.13217393527447,
+          "checkpoint_load_s": 3.208737320884337,
+          "compile_s": 27.55456418185568,
+          "straggler_s": 7.017230917440041,
+          "steady_compute_s": 21.595158819053427,
+          "checkpoint_write_s": 0.4203740173975163
+        },
+        "unattributed_s": 5.684341886080802e-14,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 62,
+          "compile_excess_s": 71.53620766250003,
+          "recompile_excess_s": 67.00239247649998,
+          "straggler_excess_s": 35.28117308400061,
+          "second_step_is_recompile": true,
+          "second_step_ratio": 39.26029805869304,
+          "first_step_cost_in_steady_steps": 41.84923725844222,
+          "longest_step_s": 73.28743271500002,
+          "longest_step_index": 1
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 24.16,
+        "lora_wrap": 14.22,
+        "data_prep": 27.29,
+        "trainer_build": 0.93
+      },
+      "other_s_composition_residual_s": 19.53699634899995,
+      "amortisation": {
+        "fixed_s": 394.2031842580006,
+        "marginal_s_per_step": 1.75122505249999,
+        "n_steps_recorded": 62,
+        "compute_fraction_pct": 21.595158819053427,
+        "overhead_fraction_pct": 78.40484118094658,
+        "fixed_excl_scheduler_s": 278.2031842580006
+      }
+    },
+    "tpu-v5e8-bs8-seq1024": {
+      "run_id": "tpu-v5e8-bs8-seq1024",
+      "backend": "tpu",
+      "status": "ok",
+      "source_file": "results/tpu-v5e8-bs8-seq1024.json",
+      "hardware": {
+        "label": "TPU v5e 2x4",
+        "chips": 8,
+        "chip_model": "tpu-v5-lite-podslice"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 8,
+        "seq_len": 1024,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "0",
+        "max_steps": 100,
+        "devices": 8
+      },
+      "measured": {
+        "total_wall_s": 732.9019449030001,
+        "median_step_s": 1.7511670740000227,
+        "p10_step_s": 1.7500610042000062,
+        "p90_step_s": 1.7518488809000246,
+        "tokens_per_s": 4678.023086219752,
+        "docs_per_s": 4.568381920136477,
+        "peak_bytes": 11734398464.0,
+        "peak_pct": 69.39598874100558,
+        "capacity_bytes": 16909332480.0,
+        "utilization_mean_pct": null,
+        "utilization_max_pct": null,
+        "memory_occupancy_mean_pct": 14.093151704096675,
+        "memory_occupancy_max_pct": 69.39598874100558,
+        "micro_f1": null,
+        "tokens_per_s_per_chip": 584.752885777469
+      },
+      "phases_contract": {
+        "submit_to_running_s": 114.0,
+        "image_pull_s": null,
+        "model_load_s": 235.09356206799998,
+        "compile_s": 70.72096826,
+        "steady_state_s": 208.67805360299997,
+        "checkpoint_write_s": 2.2339635719999933,
+        "other_s": 102.17539740000018
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 15.554604649751333,
+        "image_pull_s": null,
+        "model_load_s": 32.07708257604839,
+        "compile_s": 9.64944475203432,
+        "steady_state_s": 28.47284756907264,
+        "checkpoint_write_s": 0.3048107031965455,
+        "other_s": 13.941209749896782
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 114.0,
+          "image_pull_s": null,
+          "process_init_s": 102.17539740000018,
+          "checkpoint_load_s": 235.09356206799998,
+          "compile_s": 136.16201170899996,
+          "straggler_s": 34.66465156599861,
+          "steady_compute_s": 108.5723585880014,
+          "checkpoint_write_s": 2.2339635719999933
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 15.554604649751333,
+          "image_pull_s": null,
+          "process_init_s": 13.941209749896782,
+          "checkpoint_load_s": 32.07708257604839,
+          "compile_s": 18.578475968844792,
+          "straggler_s": 4.729780266934139,
+          "steady_compute_s": 14.814036085328032,
+          "checkpoint_write_s": 0.3048107031965455
+        },
+        "unattributed_s": -1.1368683772161603e-13,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 62,
+          "compile_excess_s": 68.96980118599998,
+          "recompile_excess_s": 67.19221052299997,
+          "straggler_excess_s": 34.66465156599861,
+          "second_step_is_recompile": true,
+          "second_step_ratio": 39.36995996590963,
+          "first_step_cost_in_steady_steps": 40.38504909669121,
+          "longest_step_s": 70.72096826,
+          "longest_step_index": 1
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 26.84,
+        "lora_wrap": 14.24,
+        "data_prep": 40.32,
+        "trainer_build": 1.04
+      },
+      "other_s_composition_residual_s": 19.735397400000167,
+      "amortisation": {
+        "fixed_s": 624.3295863149987,
+        "marginal_s_per_step": 1.7511670740000227,
+        "n_steps_recorded": 62,
+        "compute_fraction_pct": 14.814036085328032,
+        "overhead_fraction_pct": 85.18596391467197,
+        "fixed_excl_scheduler_s": 510.32958631499866
+      }
+    },
+    "tpu-v5e8-bs8-seq2048-filecache": {
+      "run_id": "tpu-v5e8-bs8-seq2048-filecache",
+      "backend": "tpu",
+      "status": "ok",
+      "source_file": "results/tpu-v5e8-bs8-seq2048-filecache.json",
+      "hardware": {
+        "label": "TPU v5e 2x4",
+        "chips": 8,
+        "chip_model": "tpu-v5-lite-podslice"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 8,
+        "seq_len": 2048,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "20Gi",
+        "max_steps": 40,
+        "devices": 8
+      },
+      "measured": {
+        "total_wall_s": 414.17139654399995,
+        "median_step_s": 4.276038836000055,
+        "p10_step_s": 4.274925261999954,
+        "p90_step_s": 4.277735139799995,
+        "tokens_per_s": 3831.583535224887,
+        "docs_per_s": 1.8708903980590268,
+        "peak_bytes": 11859302912.0,
+        "peak_pct": 70.1346604073634,
+        "capacity_bytes": 16909332480.0,
+        "utilization_mean_pct": null,
+        "utilization_max_pct": null,
+        "memory_occupancy_mean_pct": 23.930772056712808,
+        "memory_occupancy_max_pct": 70.1346604073634,
+        "micro_f1": null,
+        "tokens_per_s_per_chip": 478.94794190311086
+      },
+      "phases_contract": {
+        "submit_to_running_s": 4.0,
+        "image_pull_s": null,
+        "model_load_s": 16.028288689999982,
+        "compile_s": 61.628971217000014,
+        "steady_state_s": 248.60734314099994,
+        "checkpoint_write_s": 2.2773188999999547,
+        "other_s": 81.62947459600008
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 0.9657837391421732,
+        "image_pull_s": null,
+        "model_load_s": 3.8699651457695965,
+        "compile_s": 14.88006456535991,
+        "steady_state_s": 60.02523235922906,
+        "checkpoint_write_s": 0.5498493906152743,
+        "other_s": 19.709104799884
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 4.0,
+          "image_pull_s": null,
+          "process_init_s": 81.62947459600008,
+          "checkpoint_load_s": 16.028288689999982,
+          "compile_s": 109.10285246699988,
+          "straggler_s": 30.09190845099789,
+          "steady_compute_s": 171.0415534400022,
+          "checkpoint_write_s": 2.2773188999999547
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 0.9657837391421732,
+          "image_pull_s": null,
+          "process_init_s": 19.709104799884,
+          "checkpoint_load_s": 3.8699651457695965,
+          "compile_s": 26.342440201664004,
+          "straggler_s": 7.265568965432175,
+          "steady_compute_s": 41.29728775749278,
+          "checkpoint_write_s": 0.5498493906152743
+        },
+        "unattributed_s": -5.684341886080802e-14,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 40,
+          "compile_excess_s": 57.35293238099996,
+          "recompile_excess_s": 51.74992008599992,
+          "straggler_excess_s": 30.09190845099789,
+          "second_step_is_recompile": true,
+          "second_step_ratio": 13.102303573652401,
+          "first_step_cost_in_steady_steps": 14.412631311517682,
+          "longest_step_s": 61.628971217000014,
+          "longest_step_index": 1
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 12.46,
+        "lora_wrap": 14.6,
+        "data_prep": 24.03,
+        "trainer_build": 0.97
+      },
+      "other_s_composition_residual_s": 29.569474596000077,
+      "amortisation": {
+        "fixed_s": 243.12984310399776,
+        "marginal_s_per_step": 4.276038836000055,
+        "n_steps_recorded": 40,
+        "compute_fraction_pct": 41.29728775749278,
+        "overhead_fraction_pct": 58.70271224250722,
+        "fixed_excl_scheduler_s": 239.12984310399776
+      }
+    },
+    "tpu-v5e8-bs8-seq512-filecache": {
+      "run_id": "tpu-v5e8-bs8-seq512-filecache",
+      "backend": "tpu",
+      "status": "ok",
+      "source_file": "results/tpu-v5e8-bs8-seq512-filecache.json",
+      "hardware": {
+        "label": "TPU v5e 2x4",
+        "chips": 8,
+        "chip_model": "tpu-v5-lite-podslice"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 8,
+        "seq_len": 512,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "20Gi",
+        "max_steps": 40,
+        "devices": 8
+      },
+      "measured": {
+        "total_wall_s": 488.314000158,
+        "median_step_s": 0.7024474490000046,
+        "p10_step_s": 0.7014771309999617,
+        "p90_step_s": 0.7031085600000211,
+        "tokens_per_s": 5831.041177288087,
+        "docs_per_s": 11.388752299390795,
+        "peak_bytes": 12484255744.0,
+        "peak_pct": 73.83056521460036,
+        "capacity_bytes": 16909332480.0,
+        "utilization_mean_pct": null,
+        "utilization_max_pct": null,
+        "memory_occupancy_mean_pct": 13.43338697528966,
+        "memory_occupancy_max_pct": 73.83056521460036,
+        "micro_f1": null,
+        "tokens_per_s_per_chip": 728.8801471610109
+      },
+      "phases_contract": {
+        "submit_to_running_s": 207.0,
+        "image_pull_s": null,
+        "model_load_s": 16.430169448,
+        "compile_s": 69.73778753900001,
+        "steady_state_s": 101.54025039000001,
+        "checkpoint_write_s": 2.3464832450000017,
+        "other_s": 91.25930953599999
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 42.39075675344606,
+        "image_pull_s": null,
+        "model_load_s": 3.3646730265124116,
+        "compile_s": 14.281341005262083,
+        "steady_state_s": 20.79404857471738,
+        "checkpoint_write_s": 0.48052753847744856,
+        "other_s": 18.688653101584617
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 207.0,
+          "image_pull_s": null,
+          "process_init_s": 91.25930953599999,
+          "checkpoint_load_s": 16.430169448,
+          "compile_s": 133.697901523,
+          "straggler_s": 9.482238445999826,
+          "steady_compute_s": 28.097897960000182,
+          "checkpoint_write_s": 2.3464832450000017
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 42.39075675344606,
+          "image_pull_s": null,
+          "process_init_s": 18.688653101584617,
+          "checkpoint_load_s": 3.3646730265124116,
+          "compile_s": 27.379493825640964,
+          "straggler_s": 1.9418321905437343,
+          "steady_compute_s": 5.754063563794763,
+          "checkpoint_write_s": 0.48052753847744856
+        },
+        "unattributed_s": 0.0,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 40,
+          "compile_excess_s": 69.03534009,
+          "recompile_excess_s": 64.66256143300001,
+          "straggler_excess_s": 9.482238445999826,
+          "second_step_is_recompile": true,
+          "second_step_ratio": 93.05323690057217,
+          "first_step_cost_in_steady_steps": 99.27829852365164,
+          "longest_step_s": 69.73778753900001,
+          "longest_step_index": 1
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 23.83,
+        "lora_wrap": 14.39,
+        "data_prep": 23.46,
+        "trainer_build": 0.91
+      },
+      "other_s_composition_residual_s": 28.669309535999993,
+      "amortisation": {
+        "fixed_s": 460.2161021979998,
+        "marginal_s_per_step": 0.7024474490000046,
+        "n_steps_recorded": 40,
+        "compute_fraction_pct": 5.754063563794763,
+        "overhead_fraction_pct": 94.24593643620523,
+        "fixed_excl_scheduler_s": 253.21610219799982
+      }
+    }
+  },
+  "like_for_like": [
+    {
+      "model": "Qwen/Qwen3-0.6B",
+      "batch_size": 1,
+      "seq_len": 1024,
+      "baseline_run_id": "cpu-x86-32c-0p6b-bs1-seq1024",
+      "backends": {
+        "cpu": {
+          "run_id": "cpu-x86-32c-0p6b-bs1-seq1024",
+          "hardware": "CPU 32-core x86_64",
+          "chips": 32,
+          "median_step_s": 18.989870027522556,
+          "tokens_per_s": 53.92348649653145,
+          "step_time_speedup_vs_cpu": 1.0,
+          "speedup_per_chip": 0.03125,
+          "strong_scaling_efficiency": null,
+          "strong_scaling_efficiency_note": "not derivable: no single-chip run of this backend was measured, so there is no same-architecture baseline to divide by. speedup_per_chip is a cross-architecture ratio and is not a parallel efficiency."
+        },
+        "gpu": {
+          "run_id": "gpu-gh200-0p6b-bs1-seq1024",
+          "hardware": "NVIDIA GH200 480GB",
+          "chips": 1,
+          "median_step_s": 0.07978639006614685,
+          "tokens_per_s": 12834.26909214784,
+          "step_time_speedup_vs_cpu": 238.00888863099357,
+          "speedup_per_chip": 238.00888863099357,
+          "strong_scaling_efficiency": null,
+          "strong_scaling_efficiency_note": "not derivable: no single-chip run of this backend was measured, so there is no same-architecture baseline to divide by. speedup_per_chip is a cross-architecture ratio and is not a parallel efficiency."
+        },
+        "tpu": {
+          "run_id": "tpu-v5e8-bs1-seq1024-filecache-0p6b",
+          "hardware": "TPU v5e 2x4",
+          "chips": 8,
+          "median_step_s": 0.07997379150000938,
+          "tokens_per_s": 12804.194734219645,
+          "step_time_speedup_vs_cpu": 237.4511658299998,
+          "speedup_per_chip": 29.681395728749976,
+          "strong_scaling_efficiency": null,
+          "strong_scaling_efficiency_note": "not derivable: no single-chip run of this backend was measured, so there is no same-architecture baseline to divide by. speedup_per_chip is a cross-architecture ratio and is not a parallel efficiency."
+        }
+      }
+    }
+  ],
+  "amortisation": [
+    {
+      "baseline_run_id": "cpu-x86-32c-0p6b-bs1-seq1024",
+      "target_run_id": "gpu-gh200-0p6b-bs1-seq1024",
+      "target_backend": "gpu",
+      "model": "Qwen/Qwen3-0.6B",
+      "baseline_fixed_s": 238.09732281370088,
+      "baseline_marginal_s_per_step": 18.989870027522556,
+      "target_fixed_s": 125.70292479451746,
+      "target_marginal_s_per_step": 0.07978639006614685,
+      "asymptotic_speedup": 238.00888863099357,
+      "breakeven_n_steps": -5.943622470106725,
+      "breakeven_note": "the target's fixed cost is already lower than the baseline's, so it wins at every run length; the negative value is not a threshold",
+      "points": [
+        {
+          "n_steps": 12,
+          "baseline_total_s": 465.97576314397156,
+          "target_total_s": 126.66036147531122,
+          "end_to_end_speedup": 3.6789391544157253
+        },
+        {
+          "n_steps": 100,
+          "baseline_total_s": 2137.0843255659565,
+          "target_total_s": 133.68156380113214,
+          "end_to_end_speedup": 15.986380356420229
+        },
+        {
+          "n_steps": 1000,
+          "baseline_total_s": 19227.967350336257,
+          "target_total_s": 205.4893148606643,
+          "end_to_end_speedup": 93.57161642868937
+        },
+        {
+          "n_steps": 10000,
+          "baseline_total_s": 190136.79759803927,
+          "target_total_s": 923.566825455986,
+          "end_to_end_speedup": 205.87226864083647
+        },
+        {
+          "n_steps": 100000,
+          "baseline_total_s": 1899225.1000750693,
+          "target_total_s": 8104.3419314092025,
+          "end_to_end_speedup": 234.34661520319486
+        }
+      ],
+      "note": "time(N) = fixed_s + N * median_step_s. fixed_s is the measured wall clock minus every recorded step charged at the steady-state rate; it is not fitted. The two runs recorded different step counts (the model is what makes them comparable at equal N)."
+    },
+    {
+      "baseline_run_id": "cpu-x86-32c-0p6b-bs1-seq1024",
+      "target_run_id": "tpu-v5e8-bs1-seq1024-filecache-0p6b",
+      "target_backend": "tpu",
+      "model": "Qwen/Qwen3-0.6B",
+      "baseline_fixed_s": 238.09732281370088,
+      "baseline_marginal_s_per_step": 18.989870027522556,
+      "target_fixed_s": 307.0884093269991,
+      "target_marginal_s_per_step": 0.07997379150000938,
+      "asymptotic_speedup": 237.4511658299998,
+      "breakeven_n_steps": 3.648411691539224,
+      "breakeven_note": null,
+      "points": [
+        {
+          "n_steps": 12,
+          "baseline_total_s": 465.97576314397156,
+          "target_total_s": 308.0480948249992,
+          "end_to_end_speedup": 1.5126721150757005
+        },
+        {
+          "n_steps": 100,
+          "baseline_total_s": 2137.0843255659565,
+          "target_total_s": 315.08578847700005,
+          "end_to_end_speedup": 6.782547495701968
+        },
+        {
+          "n_steps": 1000,
+          "baseline_total_s": 19227.967350336257,
+          "target_total_s": 387.0622008270085,
+          "end_to_end_speedup": 49.67668583822759
+        },
+        {
+          "n_steps": 10000,
+          "baseline_total_s": 190136.79759803927,
+          "target_total_s": 1106.826324327093,
+          "end_to_end_speedup": 171.78557594718845
+        },
+        {
+          "n_steps": 100000,
+          "baseline_total_s": 1899225.1000750693,
+          "target_total_s": 8304.467559327937,
+          "end_to_end_speedup": 228.69920154505
+        }
+      ],
+      "note": "time(N) = fixed_s + N * median_step_s. fixed_s is the measured wall clock minus every recorded step charged at the steady-state rate; it is not fitted. The two runs recorded different step counts (the model is what makes them comparable at equal N)."
+    }
+  ],
+  "sweeps": {
+    "batch_size": [
+      {
+        "varies": "batch_size",
+        "held": {
+          "model": "Qwen/Qwen3-4B",
+          "seq_len": 1024
+        },
+        "points": [
+          {
+            "batch_size": 8,
+            "run_id": "tpu-v5e8-bs8-seq1024-filecache",
+            "status": "ok",
+            "median_step_s": 1.75122505249999,
+            "tokens_per_s": 4677.868209060495,
+            "peak_bytes": 11735372288.0,
+            "peak_pct": 69.40174783292214,
+            "capacity_bytes": 16909332480.0
+          },
+          {
+            "batch_size": 16,
+            "run_id": "tpu-v5e8-bs16-seq1024-filecache",
+            "status": "ok",
+            "median_step_s": 3.564989579999974,
+            "tokens_per_s": 4595.805859269894,
+            "peak_bytes": 11071536128.0,
+            "peak_pct": 65.4758911452902,
+            "capacity_bytes": 16909332480.0
+          },
+          {
+            "batch_size": 32,
+            "run_id": "tpu-v5e8-bs32-seq1024-filecache",
+            "status": "oom",
+            "median_step_s": null,
+            "tokens_per_s": null,
+            "peak_bytes": null,
+            "peak_pct": null,
+            "capacity_bytes": null
+          }
+        ],
+        "max_ok": 16,
+        "min_oom": 32,
+        "scaling": [
+          {
+            "from": 8,
+            "to": 16,
+            "step_time_ratio": 2.0357118434953376,
+            "throughput_ratio": 0.9824573189916604,
+            "exponent": 1.025533361324334
+          }
+        ]
+      }
+    ],
+    "seq_len": [
+      {
+        "varies": "seq_len",
+        "held": {
+          "model": "Qwen/Qwen3-4B",
+          "batch_size": 8
+        },
+        "points": [
+          {
+            "seq_len": 512,
+            "run_id": "tpu-v5e8-bs8-seq512-filecache",
+            "status": "ok",
+            "median_step_s": 0.7024474490000046,
+            "tokens_per_s": 5831.041177288087,
+            "peak_bytes": 12484255744.0,
+            "peak_pct": 73.83056521460036,
+            "capacity_bytes": 16909332480.0
+          },
+          {
+            "seq_len": 1024,
+            "run_id": "tpu-v5e8-bs8-seq1024-filecache",
+            "status": "ok",
+            "median_step_s": 1.75122505249999,
+            "tokens_per_s": 4677.868209060495,
+            "peak_bytes": 11735372288.0,
+            "peak_pct": 69.40174783292214,
+            "capacity_bytes": 16909332480.0
+          },
+          {
+            "seq_len": 2048,
+            "run_id": "tpu-v5e8-bs8-seq2048-filecache",
+            "status": "ok",
+            "median_step_s": 4.276038836000055,
+            "tokens_per_s": 3831.583535224887,
+            "peak_bytes": 11859302912.0,
+            "peak_pct": 70.1346604073634,
+            "capacity_bytes": 16909332480.0
+          }
+        ],
+        "max_ok": 2048,
+        "min_oom": null,
+        "scaling": [
+          {
+            "from": 512,
+            "to": 1024,
+            "step_time_ratio": 2.4930335429262533,
+            "throughput_ratio": 0.8022354956574133,
+            "exponent": 1.3179022939356353
+          },
+          {
+            "from": 1024,
+            "to": 2048,
+            "step_time_ratio": 2.44174147114657,
+            "throughput_ratio": 0.8190875338906616,
+            "exponent": 1.2879104574754656
+          }
+        ]
+      }
+    ]
+  },
+  "mitigation": [
+    {
+      "change": "gcsfuse fileCacheCapacity 0 -> 20Gi (fileCacheForRangeRead true)",
+      "before_run_id": "tpu-v5e8-bs8-seq1024",
+      "after_run_id": "tpu-v5e8-bs8-seq1024-filecache",
+      "model": "Qwen/Qwen3-4B",
+      "batch_size": 8,
+      "seq_len": 1024,
+      "model_load": {
+        "before_s": 235.09356206799998,
+        "after_s": 16.132861827000013,
+        "delta_s": 218.96070024099998,
+        "speedup": 14.572340889608723
+      },
+      "other": {
+        "before_s": 102.17539740000018,
+        "after_s": 86.13699634899996,
+        "delta_s": 16.03840105100022,
+        "speedup": 1.1861964281412563
+      },
+      "total_wall": {
+        "before_s": 732.9019449030001,
+        "after_s": 502.77913751299997,
+        "delta_s": 230.1228073900001,
+        "speedup": 1.4577015834990767,
+        "pct_saved": 31.398853419669525
+      },
+      "steady_step": {
+        "before_s": 1.7511670740000227,
+        "after_s": 1.75122505249999,
+        "delta_s": -5.7978499967248354e-05,
+        "pct_change": 0.003310849137587634
+      },
+      "data_prep": {
+        "before_s": 40.32,
+        "after_s": 27.29,
+        "delta_s": 13.030000000000001,
+        "speedup": 1.4774642726273362
+      }
+    }
+  ],
+  "scheduler_latency": {
+    "n": 8,
+    "min_s": 4.0,
+    "max_s": 207.0,
+    "median_s": 115.0,
+    "mean_s": 91.0,
+    "spread_ratio": 51.75,
+    "per_run": {
+      "gpu-gh200-0p6b-bs1-seq1024": 11.0,
+      "tpu-v5e8-bs1-seq1024-filecache-0p6b": 143.0,
+      "tpu-v5e8-bs16-seq1024-filecache": 5.0,
+      "tpu-v5e8-bs32-seq1024-filecache": 128.0,
+      "tpu-v5e8-bs8-seq1024-filecache": 116.0,
+      "tpu-v5e8-bs8-seq1024": 114.0,
+      "tpu-v5e8-bs8-seq2048-filecache": 4.0,
+      "tpu-v5e8-bs8-seq512-filecache": 207.0
+    },
+    "note": "measured by the launcher from kubectl timestamps (job submission to pod Running). The TPU cluster is shared by the whole class in a single namespace, so this is queue time, not provisioning time."
+  },
+  "cost": {
+    "steps_basis": 1000,
+    "prices": {
+      "retrieved_utc": "2026-08-10",
+      "tpu": {
+        "usd_per_chip_hour": 1.2,
+        "sku": "Cloud TPU v5e (tpu-v5-lite-podslice), on-demand",
+        "region": "us-west4",
+        "source": "https://cloud.google.com/tpu/pricing",
+        "applies_to_measured_hardware": true
+      },
+      "cpu": {
+        "usd_per_instance_hour": 1.1336,
+        "sku": "n1-highcpu-32 (32 vCPU, 28.8 GB), on-demand",
+        "region": "us-central1",
+        "source": "https://cloudprice.net/gcp/compute/instances/n1-highcpu-32",
+        "applies_to_measured_hardware": false,
+        "substitution_note": "The measured CPU node is Stanford on-premises hardware (hpcc-cluster-39, 2x Xeon E5-2670, 32 logical CPUs, 31 GiB) and has no list price. n1-highcpu-32 is the closest published Compute Engine shape by core count and memory. CPU cost figures are an estimate under this substitution, not a billed amount."
+      },
+      "gpu": {
+        "usd_per_gpu_hour": 2.29,
+        "published_range_usd_per_hour": [
+          1.99,
+          6.5
+        ],
+        "sku": "NVIDIA GH200 Grace Hopper, on-demand",
+        "region": "third-party cloud market rate (not GCP \u2014 GCP does not sell GH200)",
+        "source": "https://computeprices.com/gpus/gh200",
+        "applies_to_measured_hardware": false,
+        "substitution_note": "Two substitutions: the measured GPU is Stanford on-premises hardware (hpcc-pilot on stanford-pilot) with no list price, and Google Cloud does not offer a GH200, so unlike the TPU row this rate cannot come from the same price list. It is a third-party market rate for the same silicon."
+      }
+    },
+    "per_run": [
+      {
+        "run_id": "cpu-x86-32c-0p6b-bs1-seq1024",
+        "backend": "cpu",
+        "model": "Qwen/Qwen3-0.6B",
+        "batch_size": 1,
+        "seq_len": 1024,
+        "usd_per_hour": 1.1336,
+        "rate_basis": "n1-highcpu-32 proxy at $1.1336/hour",
+        "price_is_proxy": true,
+        "wall_s_for_basis": 19227.967350336257,
+        "usd_per_1000_steps": 6.054673274539216,
+        "usd_per_1000_steps_excl_queue": 6.054673274539216,
+        "tokens_in_basis": 1024000,
+        "usd_per_million_tokens": 5.9127668696672036,
+        "usd_per_million_tokens_excl_queue": 5.9127668696672036
+      },
+      {
+        "run_id": "gpu-gh200-0p6b-bs1-seq1024",
+        "backend": "gpu",
+        "model": "Qwen/Qwen3-0.6B",
+        "batch_size": 1,
+        "seq_len": 1024,
+        "usd_per_hour": 2.29,
+        "rate_basis": "1 x GH200 market rate at $2.29/GPU-hour",
+        "price_is_proxy": true,
+        "wall_s_for_basis": 205.4893148606643,
+        "usd_per_1000_steps": 0.13071403639747814,
+        "usd_per_1000_steps_excl_queue": 0.1237168141752559,
+        "tokens_in_basis": 1024000,
+        "usd_per_million_tokens": 0.12765042616941225,
+        "usd_per_million_tokens_excl_queue": 0.12081720134302334
+      },
+      {
+        "run_id": "tpu-v5e8-bs1-seq1024-filecache-0p6b",
+        "backend": "tpu",
+        "model": "Qwen/Qwen3-0.6B",
+        "batch_size": 1,
+        "seq_len": 1024,
+        "usd_per_hour": 9.6,
+        "rate_basis": "8 chips x $1.20/chip-hour",
+        "price_is_proxy": false,
+        "wall_s_for_basis": 387.0622008270085,
+        "usd_per_1000_steps": 1.0321658688720226,
+        "usd_per_1000_steps_excl_queue": 0.6508325355386894,
+        "tokens_in_basis": 1024000,
+        "usd_per_million_tokens": 1.0079744813203344,
+        "usd_per_million_tokens_excl_queue": 0.6355786479870014
+      },
+      {
+        "run_id": "tpu-v5e8-bs16-seq1024-filecache",
+        "backend": "tpu",
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 16,
+        "seq_len": 1024,
+        "usd_per_hour": 9.6,
+        "rate_basis": "8 chips x $1.20/chip-hour",
+        "price_is_proxy": false,
+        "wall_s_for_basis": 3809.9838588989746,
+        "usd_per_1000_steps": 10.159956957063931,
+        "usd_per_1000_steps_excl_queue": 10.1466236237306,
+        "tokens_in_basis": 16384000,
+        "usd_per_million_tokens": 0.6201145603676715,
+        "usd_per_million_tokens_excl_queue": 0.6193007582843384
+      },
+      {
+        "run_id": "tpu-v5e8-bs8-seq1024-filecache",
+        "backend": "tpu",
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 8,
+        "seq_len": 1024,
+        "usd_per_hour": 9.6,
+        "rate_basis": "8 chips x $1.20/chip-hour",
+        "price_is_proxy": false,
+        "wall_s_for_basis": 2145.4282367579904,
+        "usd_per_1000_steps": 5.721141964687974,
+        "usd_per_1000_steps_excl_queue": 5.411808631354641,
+        "tokens_in_basis": 8192000,
+        "usd_per_million_tokens": 0.698381587486325,
+        "usd_per_million_tokens_excl_queue": 0.6606211708196583
+      },
+      {
+        "run_id": "tpu-v5e8-bs8-seq1024",
+        "backend": "tpu",
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 8,
+        "seq_len": 1024,
+        "usd_per_hour": 9.6,
+        "rate_basis": "8 chips x $1.20/chip-hour",
+        "price_is_proxy": false,
+        "wall_s_for_basis": 2375.4966603150215,
+        "usd_per_1000_steps": 6.334657760840057,
+        "usd_per_1000_steps_excl_queue": 6.030657760840057,
+        "tokens_in_basis": 8192000,
+        "usd_per_million_tokens": 0.773273652446296,
+        "usd_per_million_tokens_excl_queue": 0.7361642774462961
+      },
+      {
+        "run_id": "tpu-v5e8-bs8-seq2048-filecache",
+        "backend": "tpu",
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 8,
+        "seq_len": 2048,
+        "usd_per_hour": 9.6,
+        "rate_basis": "8 chips x $1.20/chip-hour",
+        "price_is_proxy": false,
+        "wall_s_for_basis": 4519.168679104052,
+        "usd_per_1000_steps": 12.051116477610806,
+        "usd_per_1000_steps_excl_queue": 12.040449810944137,
+        "tokens_in_basis": 16384000,
+        "usd_per_million_tokens": 0.7355417771979251,
+        "usd_per_million_tokens_excl_queue": 0.7348907355312584
+      },
+      {
+        "run_id": "tpu-v5e8-bs8-seq512-filecache",
+        "backend": "tpu",
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 8,
+        "seq_len": 512,
+        "usd_per_hour": 9.6,
+        "rate_basis": "8 chips x $1.20/chip-hour",
+        "price_is_proxy": false,
+        "wall_s_for_basis": 1162.6635511980044,
+        "usd_per_1000_steps": 3.1004361365280118,
+        "usd_per_1000_steps_excl_queue": 2.5484361365280117,
+        "tokens_in_basis": 4096000,
+        "usd_per_million_tokens": 0.7569424161445341,
+        "usd_per_million_tokens_excl_queue": 0.6221767911445341
+      }
+    ],
+    "caveat": "usd_per_1000_steps includes the scheduler queue that the run happened to draw. Queue time varies by more than an order of magnitude across otherwise identical submissions on this shared cluster, so figures that differ by less than that are not distinguishable. Use the *_excl_queue variants to compare configurations.",
+    "sensitivity": {
+      "cpu_vs_tpu": {
+        "compared": [
+          "cpu-x86-32c-0p6b-bs1-seq1024",
+          "tpu-v5e8-bs1-seq1024-filecache-0p6b"
+        ],
+        "cpu_cost_multiple": 5.865988652730708,
+        "cpu_price_breakeven_usd_per_hour": 0.19324960669200947,
+        "note": "At the same workload the CPU costs 5.87x the TPU per 1000 steps. The proxy CPU price would have to fall to $0.1932/hour before the ordering reversed."
+      },
+      "cpu_vs_gpu": {
+        "compared": [
+          "cpu-x86-32c-0p6b-bs1-seq1024",
+          "gpu-gh200-0p6b-bs1-seq1024"
+        ],
+        "cpu_cost_multiple": 46.319993180594864,
+        "cpu_price_breakeven_usd_per_hour": 0.024473233309432057,
+        "note": "At the same workload the CPU costs 46.32x the GPU per 1000 steps. The proxy CPU price would have to fall to $0.0245/hour before the ordering reversed."
+      },
+      "gpu_vs_tpu": {
+        "compared": [
+          "gpu-gh200-0p6b-bs1-seq1024",
+          "tpu-v5e8-bs1-seq1024-filecache-0p6b"
+        ],
+        "gpu_usd_per_1000_steps": 0.13071403639747814,
+        "tpu_usd_per_1000_steps": 1.0321658688720226,
+        "gpu_cheaper_by": 7.896365970471524,
+        "gpu_cheaper_at_worst_published_price": true,
+        "gpu_price_range_tested_usd_per_hour": [
+          1.99,
+          6.5
+        ],
+        "note": "The two accelerators execute this step within 0.3% of each other, so the cost comparison is a price comparison: one GH200 against eight v5e chips at $1.20 each. The GPU is cheaper per 1000 steps across the entire published GH200 range ($1.99-$6.50/hour), so this does not rest on the quoted rate."
+      }
+    }
+  },
+  "dataset": {
+    "determined": true,
+    "train_docs_min": 496,
+    "train_docs_max": 503,
+    "evidence": [
+      {
+        "run_id": "tpu-v5e8-bs16-seq1024-filecache",
+        "batches": 31,
+        "batch_size": 16,
+        "implies_min": 496,
+        "implies_max": 511
+      },
+      {
+        "run_id": "tpu-v5e8-bs32-seq1024-filecache",
+        "batches": 15,
+        "batch_size": 32,
+        "implies_min": 480,
+        "implies_max": 511
+      },
+      {
+        "run_id": "tpu-v5e8-bs8-seq1024-filecache",
+        "batches": 62,
+        "batch_size": 8,
+        "implies_min": 496,
+        "implies_max": 503
+      },
+      {
+        "run_id": "tpu-v5e8-bs8-seq1024",
+        "batches": 62,
+        "batch_size": 8,
+        "implies_min": 496,
+        "implies_max": 503
+      }
+    ],
+    "note": "Inferred from epoch-wraparound notes, not measured. The authoritative count is in docs/dataset_stats.json, which is not committed in this checkout."
+  },
+  "coverage": {
+    "backends_with_records": [
+      "cpu",
+      "gpu",
+      "tpu"
+    ],
+    "n_records": 9,
+    "n_ok": 8,
+    "n_oom": 1,
+    "models": [
+      "Qwen/Qwen3-0.6B",
+      "Qwen/Qwen3-4B"
+    ],
+    "gaps": [
+      {
+        "id": "cpu-model-size",
+        "what": "Only Qwen3-0.6B ran on every backend; the 4B records are TPU-only.",
+        "short": "All three backends meet only at 0.6B; 4B is TPU-only.",
+        "consequence": "Cross-backend speedup is quoted only at 0.6B. Neither the CPU node nor the GPU run has a 4B baseline, so the 4B rows have no cross-backend ratio.",
+        "explained_in": "docs/backend-feasibility.md",
+        "kind": "capacity limit"
+      },
+      {
+        "id": "no-eval",
+        "what": "eval.micro_f1 is null in every record; no run evaluated the adapter.",
+        "short": "micro-F1 never measured \u2014 no quality claim is made.",
+        "consequence": "No base-vs-fine-tuned quality figure can be reported.",
+        "explained_in": "src/evaluate.py exists and is unrun; results/eval-*.json absent",
+        "kind": "missing measurement"
+      },
+      {
+        "id": "no-image-pull",
+        "what": "image_pull_s is null on every accelerator record.",
+        "short": "image_pull_s unmerged: pull time sits in the wall clock unnamed.",
+        "consequence": "Registry pull time is not attributed. It is measured by the launcher from kubectl timestamps and was never merged into these records, so it sits inside the wall clock without a name.",
+        "explained_in": "telemetry.merge_external_phases()",
+        "kind": "unmerged measurement"
+      },
+      {
+        "id": "no-tpu-utilization",
+        "what": "utilization.mean_pct is null on TPU by design.",
+        "short": "TPU exposes no core-utilization counter (CPU and GPU do).",
+        "consequence": "Compute utilization is not comparable across all three backends: the CPU row carries host CPU percent and the GPU row carries a real nvidia-smi counter, but the TPU row has only HBM occupancy, which is a different quantity.",
+        "explained_in": "JAX exposes device memory statistics but no core-utilization counter",
+        "kind": "instrument limit"
+      },
+      {
+        "id": "no-dataset-stats",
+        "what": "docs/dataset_stats.json is not in the repository.",
+        "short": "dataset_stats.json absent \u2014 no truncation table for the seq sweep.",
+        "consequence": "The truncation table \u2014 which sequence length covers what fraction of the corpus \u2014 cannot be reported, so the sequence-length sweep is shown without the dataset coverage it should be read against.",
+        "explained_in": "src/prepare_data.py writes it; .gitignore expects it committed",
+        "kind": "missing artefact"
+      }
+    ]
+  }
+}
