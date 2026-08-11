@@ -1,0 +1,236 @@
+{
+  "run_id": "tpu-v5e8-bs16-seq1024-filecache",
+  "backend": "tpu",
+  "timestamp_utc": "2026-08-11T01:19:29Z",
+  "hardware": {
+    "label": "TPU v5e 2x4",
+    "chips": 8,
+    "chip_model": "tpu-v5-lite-podslice",
+    "host_arch": "x86_64",
+    "hbm_per_chip_bytes": 16909332480.0
+  },
+  "config": {
+    "model": "Qwen/Qwen3-4B",
+    "batch_size": 16,
+    "seq_len": 1024,
+    "lora_rank": 32,
+    "lora_alpha": 64.0,
+    "dtype": "bfloat16",
+    "max_steps": 40,
+    "remat": "DECODER",
+    "file_cache_capacity": "20Gi",
+    "lr": 0.001,
+    "seed": 0,
+    "lora_modules": ".*q_proj|.*k_proj|.*v_proj|.*o_proj|.*gate_proj|.*up_proj|.*down_proj",
+    "warmup_steps": 10,
+    "model_path": "/gcs/teams/team-lharnold/models/Qwen3-4B",
+    "data_root": "/gcs/teams/team-lharnold/data/codiesp",
+    "dtype_fields_applied": [
+      "dtype",
+      "param_dtype"
+    ],
+    "trainable_lora_params": 66060288,
+    "devices": 8,
+    "step_sync": true
+  },
+  "phases": {
+    "submit_to_running_s": 5.0,
+    "image_pull_s": null,
+    "model_load_s": 16.29382429200001,
+    "compile_s": 62.896867392000104,
+    "steady_state_s": 192.19296159499993,
+    "checkpoint_write_s": 2.2558031780000647,
+    "other_s": 76.86949942199988,
+    "total_wall_s": 355.508955879
+  },
+  "steps": [
+    {
+      "step": 1,
+      "wall_s": 62.896867392000104,
+      "loss": null
+    },
+    {
+      "step": 2,
+      "wall_s": 57.01150022999991,
+      "loss": null
+    },
+    {
+      "step": 3,
+      "wall_s": 3.736607413999991,
+      "loss": null
+    },
+    {
+      "step": 4,
+      "wall_s": 3.5658064210000475,
+      "loss": null
+    },
+    {
+      "step": 5,
+      "wall_s": 3.563978757999962,
+      "loss": null
+    },
+    {
+      "step": 6,
+      "wall_s": 3.565636199000096,
+      "loss": null
+    },
+    {
+      "step": 7,
+      "wall_s": 3.564357788999928,
+      "loss": null
+    },
+    {
+      "step": 8,
+      "wall_s": 3.565757420000068,
+      "loss": null
+    },
+    {
+      "step": 9,
+      "wall_s": 3.5652809119999347,
+      "loss": null
+    },
+    {
+      "step": 10,
+      "wall_s": 3.5646867310000516,
+      "loss": null
+    },
+    {
+      "step": 11,
+      "wall_s": 3.564956029999962,
+      "loss": null
+    },
+    {
+      "step": 12,
+      "wall_s": 3.5651948920000223,
+      "loss": null
+    },
+    {
+      "step": 13,
+      "wall_s": 3.564989579999974,
+      "loss": null
+    },
+    {
+      "step": 14,
+      "wall_s": 3.562545470000032,
+      "loss": null
+    },
+    {
+      "step": 15,
+      "wall_s": 3.565586039999971,
+      "loss": null
+    },
+    {
+      "step": 16,
+      "wall_s": 3.565537160999952,
+      "loss": null
+    },
+    {
+      "step": 17,
+      "wall_s": 3.5635145400000283,
+      "loss": null
+    },
+    {
+      "step": 18,
+      "wall_s": 3.563215420000006,
+      "loss": null
+    },
+    {
+      "step": 19,
+      "wall_s": 3.565392690000067,
+      "loss": null
+    },
+    {
+      "step": 20,
+      "wall_s": 16.888292933999992,
+      "loss": null
+    },
+    {
+      "step": 21,
+      "wall_s": 0.08891323299997111,
+      "loss": null
+    },
+    {
+      "step": 22,
+      "wall_s": 3.499357135999958,
+      "loss": null
+    },
+    {
+      "step": 23,
+      "wall_s": 3.5629212210000105,
+      "loss": null
+    },
+    {
+      "step": 24,
+      "wall_s": 3.562929623000059,
+      "loss": null
+    },
+    {
+      "step": 25,
+      "wall_s": 3.56521489499994,
+      "loss": null
+    },
+    {
+      "step": 26,
+      "wall_s": 3.5654172060000064,
+      "loss": null
+    },
+    {
+      "step": 27,
+      "wall_s": 3.5645036959999743,
+      "loss": null
+    },
+    {
+      "step": 28,
+      "wall_s": 3.5632393760000696,
+      "loss": null
+    },
+    {
+      "step": 29,
+      "wall_s": 3.5650543769999103,
+      "loss": null
+    },
+    {
+      "step": 30,
+      "wall_s": 3.5652241750000258,
+      "loss": null
+    },
+    {
+      "step": 31,
+      "wall_s": 25.41735002600001,
+      "loss": null
+    }
+  ],
+  "steady": {
+    "median_step_s": 3.564989579999974,
+    "p10_step_s": 3.562545470000032,
+    "p90_step_s": 3.565586039999971,
+    "tokens_per_s": 4595.805859269894,
+    "docs_per_s": 4.488091659443256,
+    "warmup_steps_excluded": 10
+  },
+  "memory": {
+    "peak_bytes": 11071536128.0,
+    "capacity_bytes": 16909332480.0,
+    "peak_pct": 65.4758911452902,
+    "source": "jax.local_devices()[0].memory_stats()[\"peak_bytes_in_use\"]"
+  },
+  "utilization": {
+    "mean_pct": null,
+    "max_pct": null,
+    "sample_interval_s": 1.0,
+    "n_samples": 338,
+    "source": "jax.local_devices()[0].memory_stats() (HBM occupancy; no utilization counter)",
+    "mean_memory_pct": 17.070470101845903,
+    "max_memory_pct": 63.53570697546542,
+    "n_probe_errors": 0
+  },
+  "eval": {
+    "micro_f1": null,
+    "n_examples": 0,
+    "note": "not evaluated in this run"
+  },
+  "status": "ok",
+  "error": null,
+  "notes": "only 31 batches exist for max_steps=40; the trainer loops over multiple epochs | no per-step loss could be captured from Tunix; steps[].loss is null rather than a fabricated value | steady.tokens_per_s counts padded tokens (batch_size * seq_len), which is the compute actually performed | phases.other_s is composed of: jax_init=12.60s lora_wrap=14.25s data_prep=23.61s trainer_build=0.95s | phases.image_pull_s is null: it is measured by the launcher from kubectl timestamps, not from inside the pod. Merge it with telemetry.merge_external_phases(). | utilization.mean_pct/max_pct are null on TPU by design: JAX exposes device memory statistics but no core-utilization counter, and this project does not fabricate one. HBM occupancy is reported in utilization.mean_memory_pct and utilization.max_memory_pct instead."
+}
+

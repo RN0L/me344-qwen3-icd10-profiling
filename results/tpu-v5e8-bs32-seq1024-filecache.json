@@ -1,0 +1,69 @@
+{
+  "run_id": "tpu-v5e8-bs32-seq1024-filecache",
+  "backend": "tpu",
+  "timestamp_utc": "2026-08-11T01:25:55Z",
+  "hardware": {
+    "label": "TPU v5e 2x4",
+    "chips": 8,
+    "chip_model": "tpu-v5-lite-podslice",
+    "host_arch": "x86_64",
+    "hbm_per_chip_bytes": 16909332480.0
+  },
+  "config": {
+    "model": "Qwen/Qwen3-4B",
+    "batch_size": 32,
+    "seq_len": 1024,
+    "lora_rank": 32,
+    "lora_alpha": 64.0,
+    "dtype": "bfloat16",
+    "max_steps": 40,
+    "remat": "DECODER",
+    "file_cache_capacity": "20Gi",
+    "lr": 0.001,
+    "seed": 0,
+    "lora_modules": ".*q_proj|.*k_proj|.*v_proj|.*o_proj|.*gate_proj|.*up_proj|.*down_proj",
+    "warmup_steps": 10,
+    "model_path": "/gcs/teams/team-lharnold/models/Qwen3-4B",
+    "data_root": "/gcs/teams/team-lharnold/data/codiesp",
+    "dtype_fields_applied": [
+      "dtype",
+      "param_dtype"
+    ],
+    "trainable_lora_params": 66060288,
+    "devices": 8,
+    "step_sync": true
+  },
+  "phases": {
+    "submit_to_running_s": 128.0,
+    "image_pull_s": null,
+    "model_load_s": 16.166713113,
+    "compile_s": 0.0,
+    "steady_state_s": 0.0,
+    "checkpoint_write_s": 0.0,
+    "other_s": 130.1757973,
+    "total_wall_s": 274.342510413
+  },
+  "steps": [],
+  "steady": null,
+  "memory": null,
+  "utilization": {
+    "mean_pct": null,
+    "max_pct": null,
+    "sample_interval_s": 1.0,
+    "n_samples": 122,
+    "source": "jax.local_devices()[0].memory_stats() (HBM occupancy; no utilization counter)",
+    "mean_memory_pct": 12.592235886154494,
+    "max_memory_pct": 40.592441600627865,
+    "n_probe_errors": 0
+  },
+  "eval": {
+    "micro_f1": null,
+    "n_examples": 0,
+    "note": "not evaluated in this run"
+  },
+  "status": "oom",
+  "error": "JaxRuntimeError: RESOURCE_EXHAUSTED: Ran out of memory on HBM, the total memory required for HLO temporaries (21.67G) exceeds available HBM (15.75G).",
+  "notes": "only 15 batches exist for max_steps=40; the trainer loops over multiple epochs | phases.other_s is composed of: jax_init=25.00s lora_wrap=14.29s data_prep=23.83s trainer_build=0.94s | phases.image_pull_s is null: it is measured by the launcher from kubectl timestamps, not from inside the pod. Merge it with telemetry.merge_external_phases(). | utilization.mean_pct/max_pct are null on TPU by design: JAX exposes device memory statistics but no core-utilization counter, and this project does not fabricate one. HBM occupancy is reported in utilization.mean_memory_pct and utilization.max_memory_pct instead. | Run ended in an out-of-memory failure; steady and memory are null by contract and the phases below cover the run up to the failure point.",
+  "error_traceback": "Traceback (most recent call last):\n  File \"/app/src/train_qwen3_icd.py\", line 1419, in main\n    train(run)\n  File \"/app/src/train_qwen3_icd.py\", line 1335, in train\n    trainer.train(timed_train, eval_batches)\n  File \"/usr/local/lib/python3.12/site-packages/tunix/sft/peft_trainer.py\", line 707, in train\n    train_loss, aux, grad_norm = train_step(train_example)\n                                 ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/flax/nnx/graphlib.py\", line 1693, in cache_args_wrapper\n    return f(*cached_args, *args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/flax/nnx/transforms/compilation.py\", line 1023, in __call__\n    pure_args_out, pure_kwargs_out, pure_out = self.jitted_fn(\n                                               ^^^^^^^^^^^^^^^\njax.errors.JaxRuntimeError: RESOURCE_EXHAUSTED: Ran out of memory on HBM, the total memory required for HLO temporaries (21.67G) exceeds available HBM (15.75G).\n--------------------\nFor simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.\n"
+}
+
