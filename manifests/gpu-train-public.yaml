@@ -1,0 +1,169 @@
+# GH200 training Job — public-image variant. This is the one that actually runs.
+#
+# WHY THIS EXISTS
+# ---------------
+# Two earlier variants are kept in this directory because each documents a real constraint
+# (see docs/backend-feasibility.md), but neither can execute on `stanford-pilot`:
+#
+#   gpu-train.yaml               stages the checkpoint from GCS with an initContainer.
+#                                The cluster has no Workload Identity into soe-hpccenter:
+#                                  ERROR: (gcloud.storage.cp) You do not currently have an
+#                                  active account selected.
+#   gpu-train-selfcontained.yaml bakes model and data into a private image instead. The
+#                                cluster cannot authenticate to Artifact Registry:
+#                                  failed to fetch anonymous token: ... 403 Forbidden
+#                                and the RBAC persona cannot create an imagePullSecret
+#                                (`kubectl auth can-i create secrets` -> no).
+#
+# What the persona *can* do is create ConfigMaps and Jobs, and a probe Job established that
+# the pod has full egress and sees the accelerator:
+#
+#   ARCH   aarch64
+#   GPU    NVIDIA GH200 480GB, 97871 MiB
+#   HF     307        (huggingface.co reachable)
+#   PYPI   200
+#
+# So this variant needs no private registry and no credential at all: a public base image
+# that the cluster already pulls (Lab 4 uses the same one), the source mounted from a
+# ConfigMap, and dependencies, model and dataset fetched at runtime from PyPI, Hugging Face
+# and Zenodo. The trade is a longer, measured setup phase — which is itself on-topic for a
+# project about where wall-clock time goes.
+#
+# Prerequisite:
+#   kubectl create configmap qwen3-src-${TEAM} -n ns-student39 \
+#     --from-file=train_qwen3_icd.py=src/train_qwen3_icd.py \
+#     --from-file=telemetry.py=src/telemetry.py \
+#     --from-file=prepare_data.py=src/prepare_data.py \
+#     --from-file=evaluate.py=src/evaluate.py
+#
+# Rendered with envsubst. RBAC forbids `kubectl exec`, so pod logs are the only output
+# channel and the results JSON is echoed to stdout between sentinels.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: qwen3-gpu-${TEAM}
+  namespace: ns-student39
+spec:
+  backoffLimit: 0
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: training
+          # Public, and proven to pull on this cluster: Lab 4 runs the same image.
+          image: nvcr.io/nvidia/pytorch:25.01-py3
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -uo pipefail
+              started=$(date -u +%s)
+              s2r=$(( started - SUBMIT_EPOCH )); [ "$s2r" -ge 0 ] || s2r=0
+              echo "[setup] host $(uname -m); $(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -1)"
+
+              # Dependencies into an isolated tree so the image's own torch stack is untouched.
+              #
+              # google-tunix is installed --no-deps on purpose. Exactly one of its declared
+              # requirements is unsatisfiable here: `jax[tpu]`, which pulls libtpu, and libtpu
+              # publishes manylinux_2_31_x86_64 only. Everything else it needs has aarch64
+              # wheels, so its runtime set is reproduced explicitly below with jax[cuda12]
+              # swapped in for jax[tpu]. The sphinx/pytest/ipython groups are docs and tests
+              # and are deliberately omitted.
+              #
+              # The list is not guesswork - it is `importlib.metadata.requires("google-tunix")`
+              # minus that one entry. Dropping deps blindly with --no-deps is how the first
+              # attempt died on `ModuleNotFoundError: No module named 'metrax'`.
+              export PIP_ROOT_USER_ACTION=ignore
+              pip install -q --target /opt/deps \
+                "jax[cuda12]==0.10.2" \
+                "flax>=0.11.1" optax orbax-checkpoint chex jaxtyping \
+                "google-metrax>=0.2.3" grain omegaconf numba sympy tenacity \
+                datasets fsspec gcsfs hf_transfer huggingface_hub importlib_resources \
+                jinja2 kagglehub pillow pylatexenc python-dotenv perfetto sentencepiece \
+                tensorflow_datasets tqdm "transformers<=4.57.1" safetensors numpy psutil \
+                "qwix @ git+https://github.com/google/qwix@03b4c1d5040cfa4165f14930b13351a5585717f4" 2>&1 | tail -3
+              pip install -q --target /opt/deps --no-deps \
+                "google-tunix @ git+https://github.com/google/tunix@c00f424b47964758361869233e72ca3b1a73119f" 2>&1 | tail -2
+              export PYTHONPATH=/opt/deps:/opt/src
+              # pip --target puts the CUDA shared objects under /opt/deps/nvidia/*/lib, where
+              # Python's import machinery finds them but the dynamic linker does not. Without
+              # this, JAX initialises and loads the model onto the GPU and then dies at XLA
+              # compile with `RET_CHECK failure ... dnn_support != nullptr` - cuDNN missing.
+              export LD_LIBRARY_PATH="$(ls -d /opt/deps/nvidia/*/lib 2>/dev/null | tr '\n' ':')${LD_LIBRARY_PATH:-}"
+              echo "[setup] deps installed $(date -u +%H:%M:%S)"
+              echo "[setup] cuda libs: $(ls -d /opt/deps/nvidia/*/lib 2>/dev/null | wc -l) dirs on LD_LIBRARY_PATH"
+
+              python3 -c "import jax; print('[setup] jax', jax.__version__, 'devices:', jax.devices())" || exit 1
+
+              # Model and corpus at runtime — both public, no credential involved.
+              python3 -c "
+              from huggingface_hub import snapshot_download
+              snapshot_download('${MODEL_NAME}', local_dir='/opt/model', max_workers=8)
+              print('[setup] model downloaded')
+              " || exit 1
+              mkdir -p /opt/data && cd /opt/data \
+                && curl -sSL -o cd.zip "https://zenodo.org/records/3625747/files/train_dev.zip?download=1" \
+                && python3 -c "import zipfile;zipfile.ZipFile('cd.zip').extractall('.')" \
+                && echo "[setup] corpus extracted"
+              cd /
+
+              out="/tmp/${RUN_ID}.json"
+              rc=0
+              python3 -u /opt/src/train_qwen3_icd.py \
+                --backend gpu \
+                --model-path /opt/model \
+                --model-config "$MODEL_CONFIG" \
+                --model-name "$MODEL_NAME" \
+                --data-root /opt/data/train_dev \
+                --out "$out" \
+                --run-id "$RUN_ID" \
+                --hw-tag "$HW_TAG" --hw-label "$HW_LABEL" --chip-model "$HW_CHIP_MODEL" \
+                --batch-size "$BATCH_SIZE" --seq-len "$SEQ_LEN" \
+                --max-steps "$MAX_STEPS" --warmup-steps "$WARMUP_STEPS" \
+                --lora-rank "$LORA_RANK" --lora-alpha "$LORA_ALPHA" --lr "$LEARNING_RATE" \
+                --dtype "$DTYPE" --remat "$REMAT" --eval-every "$EVAL_EVERY_N_STEPS" \
+                --ckpt-dir /tmp/ckpt --adapter-out /tmp/adapter \
+                --submit-to-running-s "$s2r" || rc=$?
+
+              echo "-----BEGIN RESULTS JSON-----"
+              cat "$out" 2>/dev/null || \
+                printf '{"run_id":"%s","backend":"gpu","status":"error","error":"training exited %s without writing a results file","notes":"synthesised by the job wrapper"}\n' "$RUN_ID" "$rc"
+              echo "-----END RESULTS JSON-----"
+              exit $rc
+          env:
+            - { name: RUN_ID,      value: "${RUN_ID}" }
+            - { name: SUBMIT_EPOCH, value: "${SUBMIT_EPOCH}" }
+            - { name: MODEL_CONFIG, value: "${MODEL_CONFIG}" }
+            - { name: MODEL_NAME,  value: "${MODEL_NAME}" }
+            - { name: BATCH_SIZE,  value: "${BATCH_SIZE}" }
+            - { name: SEQ_LEN,     value: "${SEQ_LEN}" }
+            - { name: MAX_STEPS,   value: "${MAX_STEPS}" }
+            - { name: WARMUP_STEPS, value: "${WARMUP_STEPS}" }
+            - { name: LORA_RANK,   value: "${LORA_RANK}" }
+            - { name: LORA_ALPHA,  value: "${LORA_ALPHA}" }
+            - { name: LEARNING_RATE, value: "${LEARNING_RATE}" }
+            - { name: DTYPE,       value: "${DTYPE}" }
+            - { name: REMAT,       value: "${REMAT}" }
+            - { name: EVAL_EVERY_N_STEPS, value: "${EVAL_EVERY_N_STEPS}" }
+            - { name: HW_TAG,      value: "${HW_TAG}" }
+            - { name: HW_LABEL,    value: "${HW_LABEL}" }
+            - { name: HW_CHIP_MODEL, value: "${HW_CHIP_MODEL}" }
+            # JAX otherwise preallocates ~75% of VRAM, so memory.peak_bytes would report the
+            # allocator's reservation instead of what the step needed. This row exists for
+            # that number, so preallocation is off.
+            - { name: XLA_PYTHON_CLIENT_PREALLOCATE, value: "false" }
+            - { name: HF_HUB_DISABLE_PROGRESS_BARS, value: "1" }
+          resources:
+            requests: { cpu: "${GPU_CPU_REQUEST}", memory: "${GPU_MEM_REQUEST}", nvidia.com/gpu: "1" }
+            limits:   { cpu: "${GPU_CPU_LIMIT}",   memory: "${GPU_MEM_LIMIT}",   nvidia.com/gpu: "1" }
+          volumeMounts:
+            - { name: src,  mountPath: /opt/src }
+            - { name: dshm, mountPath: /dev/shm }
+      volumes:
+        - name: src
+          configMap: { name: qwen3-src-${TEAM} }
+        # The container default of 64 MB kills dataloaders; Lab 2 learned this the hard way.
+        - name: dshm
+          emptyDir: { medium: Memory, sizeLimit: ${GPU_SHM} }
