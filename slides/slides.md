@@ -10,10 +10,11 @@ paginate: true
 
 - **Workload:** LoRA fine-tune of **Qwen3-4B** on **CodiEsp** — Spanish clinical case reports annotated with ICD-10 diagnosis codes, CC-BY 4.0. Training split ~500 documents.
 - **Scale:** 66.1 M trainable LoRA parameters at 4B; 20.2 M at 0.6B. `bfloat16`, `remat=DECODER`.
-- **The resource challenge:** the 4B fine-tune **does not fit a 31 GiB commodity node in any configuration we tried** — keep rematerialisation and XLA's CPU compiler never finishes; drop it and the kernel OOM-kills at 31.5 GB.
+- **The resource challenge:** at **0.6B** all three backends run and the comparison is clean. At **4B** the CPU does not run *at all* — keep remat and XLA's CPU compiler never finishes (>64 min, single-threaded); drop it and the kernel OOM-kills at 31.5 GB against 31 GiB.
+- **7× more parameters did not make the CPU 7× slower. It made it impossible.** That discontinuity is the result a speedup chart would hide.
 - **Motivation:** a medical billing system that processes clinical documentation is a realistic setting for this class of fine-tune. That is the reason for the dataset — nothing about model quality is claimed or measured here.
 
-> **How does an LLM fine-tuning workload behave across CPU, GPU and TPU backends, and where does it actually spend its time?**
+> **Where does an LLM fine-tuning workload actually spend its time, and what does it take to run it at all?**
 
 _The object of study is the infrastructure, not the model._
 
@@ -86,4 +87,4 @@ The largest controllable cost is **XLA compilation: 138.5 s against 108.6 s of t
 | **Cost** | GPU **$0.12**/M tok · TPU **$0.64** · CPU **$5.91** | GPU cheapest across the *entire* published GH200 price range |
 | **Scaling** | fixed cost amortises only with run length | TPU 1.5× at 12 steps → 6.8× at 100 → **49.7× at 1000** |
 
-> **Recommendation: fewer, longer jobs — and cache the compilation.** The chip is not the constraint. The job's fixed cost is.
+> **Recommendation: fewer, longer jobs — and cache the compilation.** The chip is not the constraint; the job's fixed cost is. Pick the platform for the model that has to fit, not for the batch-1 benchmark — at 4B the v5e is the only one of the three that runs at all.

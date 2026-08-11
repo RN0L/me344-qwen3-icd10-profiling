@@ -5,7 +5,7 @@ was split, what the split implies, and — the part that makes it a diagnosis ra
 observation — which competing explanations the same records rule out.
 
 Every figure below is a field of `results/analysis.json`, produced by
-`profiling/analyze_runs.py` from the run records. None of it is retyped, and none of it is
+`profiling/analyze.py` from the run records. None of it is retyped, and none of it is
 rounded on the way in.
 
 ---
@@ -33,7 +33,7 @@ fraction of the run was the arithmetic?* — because `steady_state_s` is defined
 `sum(steps[1:])`, and on every accelerator record here `steps[1]` is a second XLA compile, not
 a training step.
 
-`analyze_runs.py` splits it further using an identity that is exact for any `m`:
+`analyze.py` splits it further using an identity that is exact for any `m`:
 
 ```
 sum(S) = n·m  +  (S[0] − m)  +  (S[1] − m)  +  Σ_{i≥2}(S[i] − m)

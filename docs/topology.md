@@ -148,7 +148,7 @@ Three consequences follow, and all three shape the report:
 **`other_s` is a residual, not a measurement.** `telemetry.py` computes it so the phase
 breakdown always sums to the wall clock — nothing is silently dropped. It records its own
 composition in `notes` (`jax_init=…s lora_wrap=…s data_prep=…s trainer_build=…s`), which
-`analyze_runs.py` parses back out. Those four named costs do **not** account for all of
+`analyze.py` parses back out. Those four named costs do **not** account for all of
 `other_s`: the remainder, reported as `other_s_composition_residual_s`, is interpreter startup
 and imports, which nothing times explicitly. It runs from 19.5 s to 69.5 s depending on the
 run and is real time that the report attributes to process startup rather than pretending it

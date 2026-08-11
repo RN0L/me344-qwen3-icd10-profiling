@@ -3,7 +3,7 @@
 
 Every value plotted here is read out of ``analysis.json``. This module contains no
 measurement, no constant taken from a run, and no arithmetic beyond unit conversion and
-axis limits — if a number needs deriving, it is derived in ``analyze_runs.py`` and read back.
+axis limits — if a number needs deriving, it is derived in ``analyze.py`` and read back.
 Run that first.
 
 The figure is meant to be projected in a five-minute talk, so it is laid out for legibility
@@ -12,7 +12,7 @@ rather than density: large type, one claim per panel, and the panel that carries
 
 ::
 
-    python3 profiling/analyze_runs.py
+    python3 profiling/analyze.py
     python3 profiling/make_dashboard.py            # -> results/systems_dashboard.png
     python3 profiling/make_dashboard.py --panels   # also write each panel as its own file
 
@@ -603,7 +603,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if not os.path.exists(args.analysis):
         raise SystemExit(
-            "%s not found — run `python3 profiling/analyze_runs.py` first." % args.analysis
+            "%s not found — run `python3 profiling/analyze.py` first." % args.analysis
         )
     with open(args.analysis, "r", encoding="utf-8") as handle:
         analysis = json.load(handle)

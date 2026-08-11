@@ -32,9 +32,9 @@ Usage
 
 ::
 
-    python3 profiling/analyze_runs.py                 # writes results/analysis.json
-    python3 profiling/analyze_runs.py --print         # ... and prints a readable summary
-    python3 profiling/analyze_runs.py --check         # validate records only, write nothing
+    python3 profiling/analyze.py                 # writes results/analysis.json
+    python3 profiling/analyze.py --print         # ... and prints a readable summary
+    python3 profiling/analyze.py --check         # validate records only, write nothing
 
 Standard library only, so it runs anywhere the repo is checked out. ``make_dashboard.py`` is
 the one piece of tooling that needs matplotlib.
@@ -168,17 +168,32 @@ CONTRACT_PHASES = (
 PHASE_SUM_ABS_TOL_S = 1e-3
 PHASE_SUM_REL_TOL = 1e-6
 
-#: Substrings in ``notes`` that mean the record's own telemetry doubted the measurement.
+#: Phrases in ``notes`` that mean a field of the record is not a measurement, and which field.
+#:
 #: One 0.6B CPU run reported 11 million tokens/s because a per-step probe blocked on a stale
-#: buffer; it carried ``status: "ok"`` and was caught only by reading its notes. A consumer
+#: buffer. It carried ``status: "ok"`` and was caught only by reading its notes. A consumer
 #: that trusts ``status`` alone would have charted it, so this consumer does not.
-SUSPECT_NOTE_MARKERS = (
-    "stale buffer",
-    "never changed identity",
-    "may have been blocking",
-    "discarded",
-    "suspect",
+#:
+#: The patterns are matched against what the records actually say rather than against a
+#: remembered phrasing — the loss note reads "no per-step loss *could be captured*", so a
+#: filter written for "could **not** be captured" would match nothing and quietly pass.
+#: Each entry names the field it taints, so a warning scopes to that field instead of
+#: condemning the whole record: every record here carries the loss caveat, and none of them
+#: is thereby untrustworthy for step times.
+NOTE_MARKERS = (
+    {"pattern": "stale buffer", "taints": "steady", "why": "per-step probe may have timed dispatch rather than completion"},
+    {"pattern": "never changed identity", "taints": "steady", "why": "block_until_ready may have returned on an unchanged buffer"},
+    {"pattern": "may have been blocking", "taints": "steady", "why": "telemetry flagged its own step timing"},
+    {"pattern": "indicative", "taints": "*", "why": "the record calls the value indicative rather than measured"},
+    {"pattern": "discarded", "taints": "*", "why": "the record says it was discarded"},
+    {"pattern": "suspect", "taints": "*", "why": "the record calls itself suspect"},
+    {"pattern": "loss could be captured", "taints": "steps[].loss", "why": "no per-step loss was obtainable from Tunix; it is null rather than fabricated"},
 )
+
+#: Fields the report, dashboard and slides actually read. Cross-checked against the tainted
+#: set so that a taint on a field nothing plots stays a note, and a taint on a field something
+#: plots becomes an error.
+PLOTTED_FIELDS = ("steady", "memory", "phases", "utilization")
 
 
 class ContractError(RuntimeError):
@@ -205,14 +220,16 @@ def load_records(results_dir: str) -> List[Dict[str, Any]]:
     return records
 
 
-def validate(record: Dict[str, Any]) -> List[str]:
-    """Re-check the contract invariants and physical plausibility. Returns warnings.
+def validate(record: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+    """Re-check the contract invariants and physical plausibility.
 
-    Hard violations raise; things that are merely worth stating are returned as warnings and
-    travel into ``analysis.json`` so the report can cite them.
+    Returns ``(warnings, tainted_fields)``. Hard violations raise — including a note that
+    casts doubt on a field the deliverables actually plot. Everything else is returned and
+    travels into ``analysis.json`` so the report can cite it.
     """
     run_id = record.get("run_id", "<unknown>")
     warnings: List[str] = []
+    tainted: List[str] = []
 
     phases = record.get("phases") or {}
     missing = [key for key in CONTRACT_PHASES + ("total_wall_s",) if key not in phases]
@@ -250,18 +267,28 @@ def validate(record: Dict[str, Any]) -> List[str]:
                     f"(relative error {rel:.3e}) — one of the two was mismeasured"
                 )
 
-    for marker in SUSPECT_NOTE_MARKERS:
-        if marker in (record.get("notes") or "").lower():
-            warnings.append(
-                f"the record's own notes contain {marker!r}: telemetry flagged this measurement, "
-                f"status={status!r} is not sufficient to trust it"
+    notes = (record.get("notes") or "").lower()
+    for marker in NOTE_MARKERS:
+        if marker["pattern"] in notes:
+            tainted.append(marker["taints"])
+            scope = "every field" if marker["taints"] == "*" else marker["taints"]
+            message = (
+                f"notes contain {marker['pattern']!r} — {marker['why']}; "
+                f"{scope} of this record is not a measurement"
             )
-            break
+            # A taint on something the deliverables plot is an error, not a note: it is
+            # exactly the case that produced an 11-million-tokens/s chart once already.
+            if marker["taints"] == "*" or marker["taints"] in PLOTTED_FIELDS:
+                raise ContractError(
+                    f"{run_id}: {message}. status={status!r} is not sufficient to trust it. "
+                    f"Remove the record or fix the measurement; do not plot it."
+                )
+            warnings.append(message)
 
     if status == "ok" and not steady:
         warnings.append("status is 'ok' but the steady block is absent")
 
-    return warnings
+    return warnings, tainted
 
 
 # ==========================================================================================
@@ -1118,10 +1145,13 @@ def analyse(results_dir: str) -> Dict[str, Any]:
         raise SystemExit(f"no run records found in {results_dir}/")
 
     warnings: Dict[str, List[str]] = {}
+    tainted: Dict[str, List[str]] = {}
     for record in records:
-        found = validate(record)
+        found, fields = validate(record)
         if found:
             warnings[record["run_id"]] = found
+        if fields:
+            tainted[record["run_id"]] = fields
 
     runs = [derive_run(record) for record in records]
     by_id = {run["run_id"]: run for run in runs}
@@ -1135,7 +1165,7 @@ def analyse(results_dir: str) -> Dict[str, Any]:
     ]
 
     return {
-        "generated_by": "profiling/analyze_runs.py",
+        "generated_by": "profiling/analyze.py",
         "generated_from": {
             "results_dir": results_dir,
             "n_records": len(records),
@@ -1144,11 +1174,14 @@ def analyse(results_dir: str) -> Dict[str, Any]:
         "validation": {
             "all_records_satisfy_contract": True,
             "warnings": warnings,
+            "tainted_fields": tainted,
+            "plotted_fields": list(PLOTTED_FIELDS),
             "checks_applied": [
                 "phases sum to total_wall_s within tolerance",
                 "status is one of ok/oom/error/timeout",
                 "tokens_per_s == batch_size*seq_len/median_step_s",
-                "notes scanned for self-reported measurement doubts",
+                "notes scanned for self-reported doubt, scoped to the field each note taints; "
+                "a taint on a field the deliverables plot is a hard error, not a warning",
             ],
         },
         "runs": {run["run_id"]: run for run in runs},

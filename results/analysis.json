@@ -1,5 +1,5 @@
 {
-  "generated_by": "profiling/analyze_runs.py",
+  "generated_by": "profiling/analyze.py",
   "generated_from": {
     "results_dir": "results",
     "n_records": 9,
@@ -17,12 +17,69 @@
   },
   "validation": {
     "all_records_satisfy_contract": true,
-    "warnings": {},
+    "warnings": {
+      "cpu-x86-32c-0p6b-bs1-seq1024": [
+        "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
+      ],
+      "gpu-gh200-0p6b-bs1-seq1024": [
+        "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
+      ],
+      "tpu-v5e8-bs1-seq1024-filecache-0p6b": [
+        "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
+      ],
+      "tpu-v5e8-bs16-seq1024-filecache": [
+        "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
+      ],
+      "tpu-v5e8-bs8-seq1024-filecache": [
+        "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
+      ],
+      "tpu-v5e8-bs8-seq1024": [
+        "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
+      ],
+      "tpu-v5e8-bs8-seq2048-filecache": [
+        "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
+      ],
+      "tpu-v5e8-bs8-seq512-filecache": [
+        "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
+      ]
+    },
+    "tainted_fields": {
+      "cpu-x86-32c-0p6b-bs1-seq1024": [
+        "steps[].loss"
+      ],
+      "gpu-gh200-0p6b-bs1-seq1024": [
+        "steps[].loss"
+      ],
+      "tpu-v5e8-bs1-seq1024-filecache-0p6b": [
+        "steps[].loss"
+      ],
+      "tpu-v5e8-bs16-seq1024-filecache": [
+        "steps[].loss"
+      ],
+      "tpu-v5e8-bs8-seq1024-filecache": [
+        "steps[].loss"
+      ],
+      "tpu-v5e8-bs8-seq1024": [
+        "steps[].loss"
+      ],
+      "tpu-v5e8-bs8-seq2048-filecache": [
+        "steps[].loss"
+      ],
+      "tpu-v5e8-bs8-seq512-filecache": [
+        "steps[].loss"
+      ]
+    },
+    "plotted_fields": [
+      "steady",
+      "memory",
+      "phases",
+      "utilization"
+    ],
     "checks_applied": [
       "phases sum to total_wall_s within tolerance",
       "status is one of ok/oom/error/timeout",
       "tokens_per_s == batch_size*seq_len/median_step_s",
-      "notes scanned for self-reported measurement doubts"
+      "notes scanned for self-reported doubt, scoped to the field each note taints; a taint on a field the deliverables plot is a hard error, not a warning"
     ]
   },
   "runs": {

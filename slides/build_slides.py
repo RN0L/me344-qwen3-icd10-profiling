@@ -8,7 +8,7 @@ the print stylesheet puts one slide per page, so Cmd-P → Save as PDF gives a P
 
 ::
 
-    python3 profiling/analyze_runs.py
+    python3 profiling/analyze.py
     python3 profiling/make_dashboard.py --panels     # writes slides/figures/*.png
     python3 slides/build_slides.py                   # writes slides/slides.html
 
