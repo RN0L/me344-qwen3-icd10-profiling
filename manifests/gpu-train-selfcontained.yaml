@@ -1,0 +1,115 @@
+# GH200 training Job — self-contained image variant.
+#
+# manifests/gpu-train.yaml stages the checkpoint from GCS with an initContainer. That path
+# needs credentials, and `stanford-pilot` has none: it is not a GKE cluster with Workload
+# Identity into soe-hpccenter, so `gcloud storage cp` inside the pod fails with
+#
+#   ERROR: (gcloud.storage.cp) You do not currently have an active account selected.
+#
+# Minting a service-account key to work around that is not a step to take casually on a
+# shared class cluster, so this variant carries the model and dataset inside the image
+# instead (see docker/Dockerfile.gh200 for why that exception is bounded and deliberate)
+# and drops the initContainer entirely.
+#
+# RBAC on this cluster is create/delete-only and forbids `kubectl exec`, so pod logs are
+# the only output channel. The wrapper therefore echoes the results JSON to stdout between
+# sentinels, exactly as the TPU manifest does, and scripts/wait-job.sh harvests it there.
+#
+# Rendered with envsubst. Required: TEAM, IMAGE_URI_GPU, RUN_ID, SUBMIT_EPOCH,
+# MODEL_CONFIG, MODEL_NAME, BATCH_SIZE, SEQ_LEN, MAX_STEPS, WARMUP_STEPS, LORA_RANK,
+# LORA_ALPHA, LEARNING_RATE, DTYPE, REMAT, EVAL_EVERY_N_STEPS, HW_TAG, HW_LABEL,
+# HW_CHIP_MODEL, GPU_CPU_REQUEST, GPU_CPU_LIMIT, GPU_MEM_REQUEST, GPU_MEM_LIMIT, GPU_SHM.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: qwen3-gpu-${TEAM}
+  namespace: ns-student39
+spec:
+  backoffLimit: 0          # a failed attempt should surface, not be retried into a backoff loop
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: training
+          image: ${IMAGE_URI_GPU}
+          imagePullPolicy: Always
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -uo pipefail
+              started=$(date -u +%s)
+              s2r=$(( started - SUBMIT_EPOCH ))
+              [ "$s2r" -ge 0 ] || s2r=0
+              out="/tmp/${RUN_ID}.json"
+              rc=0
+              python3 -u /app/src/train_qwen3_icd.py \
+                --backend gpu \
+                --model-path "$MODEL_PATH" \
+                --model-config "$MODEL_CONFIG" \
+                --model-name "$MODEL_NAME" \
+                --data-root "$DATA_ROOT" \
+                --out "$out" \
+                --run-id "$RUN_ID" \
+                --hw-tag "$HW_TAG" \
+                --hw-label "$HW_LABEL" \
+                --chip-model "$HW_CHIP_MODEL" \
+                --batch-size "$BATCH_SIZE" \
+                --seq-len "$SEQ_LEN" \
+                --max-steps "$MAX_STEPS" \
+                --warmup-steps "$WARMUP_STEPS" \
+                --lora-rank "$LORA_RANK" \
+                --lora-alpha "$LORA_ALPHA" \
+                --lr "$LEARNING_RATE" \
+                --dtype "$DTYPE" \
+                --remat "$REMAT" \
+                --eval-every "$EVAL_EVERY_N_STEPS" \
+                --ckpt-dir /tmp/ckpt \
+                --adapter-out /tmp/adapter \
+                --submit-to-running-s "$s2r" || rc=$?
+              echo "-----BEGIN RESULTS JSON-----"
+              cat "$out" 2>/dev/null || \
+                printf '{"run_id":"%s","backend":"gpu","status":"error","error":"training exited %s without writing a results file","notes":"synthesised by the job wrapper"}\n' "$RUN_ID" "$rc"
+              echo "-----END RESULTS JSON-----"
+              exit $rc
+          env:
+            - { name: TEAM,        value: "${TEAM}" }
+            - { name: BACKEND,     value: "gpu" }
+            - { name: RUN_ID,      value: "${RUN_ID}" }
+            - { name: SUBMIT_EPOCH, value: "${SUBMIT_EPOCH}" }
+            # MODEL_PATH and DATA_ROOT come from the image's own ENV (/opt/model, /opt/data).
+            - { name: MODEL_CONFIG, value: "${MODEL_CONFIG}" }
+            - { name: MODEL_NAME,  value: "${MODEL_NAME}" }
+            - { name: BATCH_SIZE,  value: "${BATCH_SIZE}" }
+            - { name: SEQ_LEN,     value: "${SEQ_LEN}" }
+            - { name: MAX_STEPS,   value: "${MAX_STEPS}" }
+            - { name: WARMUP_STEPS, value: "${WARMUP_STEPS}" }
+            - { name: LORA_RANK,   value: "${LORA_RANK}" }
+            - { name: LORA_ALPHA,  value: "${LORA_ALPHA}" }
+            - { name: LEARNING_RATE, value: "${LEARNING_RATE}" }
+            - { name: DTYPE,       value: "${DTYPE}" }
+            - { name: REMAT,       value: "${REMAT}" }
+            - { name: EVAL_EVERY_N_STEPS, value: "${EVAL_EVERY_N_STEPS}" }
+            - { name: HW_TAG,      value: "${HW_TAG}" }
+            - { name: HW_LABEL,    value: "${HW_LABEL}" }
+            - { name: HW_CHIP_MODEL, value: "${HW_CHIP_MODEL}" }
+            # JAX preallocates ~75% of VRAM by default, which makes peak_bytes report the
+            # allocator's reservation rather than what the step actually needed. The whole
+            # point of this row is the memory number, so preallocation is off.
+            - { name: XLA_PYTHON_CLIENT_PREALLOCATE, value: "false" }
+          resources:
+            requests:
+              cpu: "${GPU_CPU_REQUEST}"
+              memory: "${GPU_MEM_REQUEST}"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "${GPU_CPU_LIMIT}"
+              memory: "${GPU_MEM_LIMIT}"
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - { name: dshm, mountPath: /dev/shm }
+      volumes:
+        # The container default of 64 MB kills dataloaders; Lab 2 learned this the hard way.
+        - name: dshm
+          emptyDir: { medium: Memory, sizeLimit: ${GPU_SHM} }
