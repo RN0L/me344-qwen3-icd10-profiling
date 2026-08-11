@@ -249,11 +249,18 @@ never the obstacle — everything after it was environment plumbing.
 | TPU v5e 2x4 (8 chips) | Qwen3-0.6B | 0.0800 | 12 804 | 11.7 / 16.9 GB | 237.5× |
 | GPU GH200 (1 chip) | Qwen3-0.6B | **0.0798** | 12 834 | **5.2 / 102.6 GB** | 238.0× |
 
-**One GH200 matches an eight-chip v5e slice to within 0.3 %**, at 5.0 % memory occupancy
-against the TPU's 69.4 %. At bs=1 this workload occupies neither accelerator: it is
+**One GH200 matches an eight-chip v5e slice to within 0.3 %.** At bs=1 this workload occupies
+neither accelerator — 5.0 % of the GH200's 97 GB and 7.3 % of the v5e's per-chip HBM — so it is
 latency-bound, and the v5e's eight chips buy nothing a single Hopper does not already deliver.
-The TPU's real advantage in this project lies elsewhere — it is the platform that still runs
+The TPU's real advantage in this project lies elsewhere: it is the platform that still runs
 when the model grows to 4B.
+
+> ⚠️ An earlier revision of this file compared the GH200's 5.0 % against **69.4 %**, which is
+> the TPU's occupancy on the **4B** run — a different model. Comparing a 0.6B GPU figure with
+> a 4B TPU figure overstated the difference by roughly an order of magnitude. The like-for-like
+> pair is 5.0 % vs 7.3 %, both at 0.6B. Caught in review; recorded rather than quietly fixed,
+> because mixing model sizes inside one sentence is exactly the error this document exists to
+> prevent elsewhere.
 
 ### And the portability finding, sharpened
 
@@ -263,24 +270,22 @@ declared requirements is** — `jax[tpu]`. Substituting `jax[cuda12]` and reprod
 the framework, not the model code, not the architecture: one extra pin in a dependency graph
 decided whether a library was portable.
 
-The chain is worth stating in full, because four of its five links were solvable:
+The chain is worth stating in full, because every link was eventually solvable — the last one
+only by abandoning the private-image approach entirely:
 
 | # | Obstacle | Outcome |
 |---|---|---|
 | 1 | ARM64 Grace host; amd64 image gives `exec format error` | arm64 build required |
-| 2 | QEMU cross-build segfaults in the first `RUN` | ✅ solved — Dockerfile with no `RUN` |
-| 3 | `libtpu` has no aarch64 wheel | ✅ solved — two-pass resolve with `--no-deps` |
-| 4 | No GCS credentials on the cluster | ✅ solved — model and data baked into the image |
-| 5 | No registry credentials from cluster to Artifact Registry | ❌ **structural** |
+| 2 | QEMU cross-build segfaults in the first `RUN` | ✅ Dockerfile with no `RUN` |
+| 3 | `libtpu` has no aarch64 wheel | ✅ two-pass resolve with `--no-deps` |
+| 4 | No GCS credentials on the cluster | ✅ model and data baked into the image |
+| 5 | No registry credentials, and RBAC forbids `imagePullSecret` | ✅ public image + ConfigMap, no credential at all |
+| 6 | CUDA libs under `pip --target` invisible to `ld.so` | ✅ `LD_LIBRARY_PATH` over `/opt/deps/nvidia/*/lib` |
 
-The dependency finding still stands on its own: **the same JAX program that runs on the TPU
-cannot have its dependency set installed for an ARM64 host by the obvious route**, because the
-framework providing the model implementation is x86-and-TPU-bound by default. "One codebase,
-three backends" is true of the code and false of the supply chain.
-
-That chain is the honest reason the GPU column is absent, and it is a portability finding worth
-more than a third bar on a chart: a stack chosen for "one codebase, three backends" turned
-out to be two backends, and the wall was in the dependency graph rather than in the code.
+**"One codebase, three backends" is true of the code and was, for a while, false of the supply
+chain.** It took a substitution (`jax[cuda12]` for `jax[tpu]`), an explicit dependency list, and
+a delivery mechanism that routes around a registry the cluster cannot authenticate to. None of
+that is visible in the model code, and none of it is a property of the accelerator.
 
 ---
 
