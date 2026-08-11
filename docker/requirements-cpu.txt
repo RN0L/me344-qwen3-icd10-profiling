@@ -1,0 +1,12 @@
+# CPU row: hpcc-cluster-39, 32 x86_64 cores, 31 GiB RAM, no accelerator.
+-r requirements-common.txt
+
+# jax[cpu] is jax + jaxlib with no plugin at all — the same 0.10.2 the other two rows run, minus
+# the PJRT backend. That is what makes the CPU number a fair "same code, no accelerator"
+# baseline rather than a different implementation.
+#
+# Thread counts (OMP_NUM_THREADS, XLA_FLAGS=--xla_cpu_multi_thread_eigen) are deliberately NOT
+# baked into the image: the sweep varies them per run and sets them in the run environment, so
+# baking a value here would silently pin one point of the sweep.
+jax[cpu]==0.10.2
+jaxlib==0.10.2

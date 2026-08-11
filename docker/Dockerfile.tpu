@@ -1,0 +1,66 @@
+# syntax=docker/dockerfile:1
+# =============================================================================================
+# TPU row — TPU v5e 2x4 (8 chips) on class-tpu-cluster-west4.
+#
+# Build context is the REPO ROOT, not this directory:
+#   docker build --platform linux/amd64 -f docker/Dockerfile.tpu -t <uri> .
+# docker/build.sh does that for you.
+#
+# This is Lab 2's verified-working image with the Gemma 3 training script replaced by this
+# project's src/. The v5e host CPU is x86_64, hence linux/amd64. Every pin below was arrived at
+# by breaking the build first; treat them as measurements, not preferences.
+# =============================================================================================
+
+# Digest-pinned so a rebuild in six weeks resolves the same base as the run that produced
+# results/. --platform on FROM as well as on the CLI: belt and braces, because an image built
+# for the wrong architecture is the single most expensive mistake available on this project.
+FROM --platform=linux/amd64 python:3.12-slim@sha256:229a2c5bfa27522db7815ea81f9bed70af17ccb9de9fc7ad142b1877b5830d36
+
+# uv rather than pip: Lab 2 used it, it resolves this graph in well under a minute, and it is
+# the only installer here that implements --override. Pinned so a resolver change cannot quietly
+# alter the dependency graph between rebuilds.
+COPY --from=ghcr.io/astral-sh/uv:0.11.26 /uv /usr/local/bin/uv
+
+# git is not optional: the tunix and qwix requirements are git+https SHAs.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/src:/app \
+    ME344_EXPECT_BACKEND=tpu
+
+WORKDIR /app
+
+# --- dependency layer ------------------------------------------------------------------------
+# Only the requirements files are copied here. Editing src/ below therefore re-uses this layer
+# instead of re-resolving and re-downloading several GB of wheels on every code change.
+COPY docker/requirements-common.txt \
+     docker/requirements-override.txt \
+     docker/requirements-tpu.txt \
+     /app/requirements/
+
+# -f points at the JAX release index, which is where libtpu wheels are served from; the `tpu`
+# extra can fail to resolve without it. --override forces transformers 5.13.1 past the
+# `transformers<=4.57.1` cap that tunix declares — see requirements-override.txt.
+RUN uv pip install --system --no-cache \
+      --override /app/requirements/requirements-override.txt \
+      -r /app/requirements/requirements-tpu.txt \
+      -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
+
+# --- application layer -----------------------------------------------------------------------
+COPY docker/smoke.py /app/smoke.py
+COPY src/ /app/src/
+
+# manifests/env.sh sets TPU_ENTRYPOINT=/app/train_tpu.py and manifests/tpu-train.yaml runs it with
+# no arguments, passing the whole run configuration as pod environment. src/train_qwen3_icd.py is
+# an argparse program with required flags. docker/entrypoint.py is the translation between the
+# two, and it derives its backend from this filename — install it as train_tpu.py and it runs the
+# TPU row, with no environment variable able to talk it into anything else.
+COPY docker/entrypoint.py /app/train_tpu.py
+
+# The default command is the self-test, not the trainer. On this cluster pod logs are the only
+# output channel, so `kubectl create job --image=<this>` with no override is the fastest way to
+# answer "does this image see 8 chips?". Training Jobs set `command:` explicitly.
+CMD ["python3", "/app/smoke.py"]

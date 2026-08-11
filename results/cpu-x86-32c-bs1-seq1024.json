@@ -1,0 +1,68 @@
+{
+  "run_id": "cpu-x86-32c-bs1-seq1024",
+  "backend": "cpu",
+  "timestamp_utc": "2026-08-11T00:03:17Z",
+  "hardware": {
+    "label": "CPU 32-core x86_64",
+    "chips": 32,
+    "chip_model": "Intel(R) Xeon(R) CPU E5-2670 0 @ 2.60GHz",
+    "host_arch": "x86_64",
+    "hbm_per_chip_bytes": 33400209408.0
+  },
+  "config": {
+    "model": "Qwen/Qwen3-4B",
+    "batch_size": 1,
+    "seq_len": 1024,
+    "lora_rank": 32,
+    "lora_alpha": 64.0,
+    "dtype": "bfloat16",
+    "max_steps": 12,
+    "remat": "DECODER",
+    "file_cache_capacity": "none",
+    "lr": 0.001,
+    "seed": 0,
+    "lora_modules": ".*q_proj|.*k_proj|.*v_proj|.*o_proj|.*gate_proj|.*up_proj|.*down_proj",
+    "warmup_steps": 2,
+    "model_path": "/home/admin/final-project/models/Qwen3-4B",
+    "data_root": "/home/admin/final-project/data/sft",
+    "dtype_fields_applied": [
+      "dtype",
+      "param_dtype"
+    ],
+    "trainable_lora_params": 66060288,
+    "devices": 1,
+    "step_sync": true
+  },
+  "phases": {
+    "submit_to_running_s": 0.0,
+    "image_pull_s": 0.0,
+    "model_load_s": 10.96497383294627,
+    "compile_s": 0.0,
+    "steady_state_s": 0.0,
+    "checkpoint_write_s": 0.0,
+    "other_s": 17.474496725946665,
+    "total_wall_s": 28.439470558892936
+  },
+  "steps": [],
+  "steady": null,
+  "memory": null,
+  "utilization": {
+    "mean_pct": 7.357692307692308,
+    "max_pct": 30.9,
+    "sample_interval_s": 1.0,
+    "n_samples": 26,
+    "source": "psutil.cpu_percent() [host-wide, all cores] + psutil.Process().memory_info().rss",
+    "mean_memory_pct": 24.070198736070246,
+    "max_memory_pct": 46.780355707163835,
+    "n_probe_errors": 0
+  },
+  "eval": {
+    "micro_f1": null,
+    "n_examples": 0,
+    "note": "not evaluated in this run"
+  },
+  "status": "error",
+  "error": "AssertionError: TrainingConfig requires ['eval_every_n_steps'], which this script does not set \u2014 pass --ckpt-dir if checkpoint_root_directory is among them",
+  "notes": "phases.other_s is composed of: jax_init=3.08s lora_wrap=12.04s data_prep=2.27s trainer_build=0.00s | phases.submit_to_running_s and phases.image_pull_s are 0.0 on the bare-metal CPU backend: the container is started directly on the node with `podman run` from a locally built image, so there is no scheduler queue and no registry pull. Both are measured, not assumed, on the GPU and TPU rows.",
+  "error_traceback": "Traceback (most recent call last):\n  File \"/home/admin/final-project/repo/src/train_qwen3_icd.py\", line 1601, in main\n    train(run)\n  File \"/home/admin/final-project/repo/src/train_qwen3_icd.py\", line 1481, in train\n    assert not required, (\n           ^^^^^^^^^^^^\nAssertionError: TrainingConfig requires ['eval_every_n_steps'], which this script does not set \u2014 pass --ckpt-dir if checkpoint_root_directory is among them\n"
+}

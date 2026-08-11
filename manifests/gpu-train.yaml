@@ -1,0 +1,272 @@
+# ME344 final project — Qwen3-4B LoRA on CodiEsp, one NVIDIA GH200 480GB.
+#
+# Cluster  : stanford-pilot (control plane hpcc-gke.stanford.edu), context student39-context
+# Namespace: ns-student39 — real per-student isolation here, unlike the TPU cluster. Names are
+#            still ${TEAM}-suffixed so that every artefact in this repo reads the same way.
+#
+#   source manifests/env.sh && me344_submit gpu && me344_wait gpu && me344_harvest gpu
+#
+# This is an envsubst template. It consumes: TEAM, PROJECT, GPU_NAMESPACE, IMAGE_URI_GPU,
+# GCLOUD_IMAGE, IMAGE_PULL_POLICY, RUN_ID, SUBMIT_EPOCH, MODEL_GCS_URI, DATA_GCS_URI,
+# GCP_KEY_SECRET, MODEL_NAME, BATCH_SIZE, SEQ_LEN, MAX_STEPS, WARMUP_STEPS, LORA_RANK,
+# LORA_ALPHA, LEARNING_RATE, DTYPE, REMAT, EVAL_EVERY_N_STEPS, EVAL_EXAMPLES,
+# EVAL_MAX_NEW_TOKENS, UTIL_INTERVAL_S, TRAIN_ENTRYPOINT, HW_TAG, HW_LABEL, HW_CHIPS,
+# HW_CHIP_MODEL, HW_HOST_ARCH, BACKOFF_LIMIT, ACTIVE_DEADLINE_S, GPU_TTL_S, GPU_CPU_REQUEST,
+# GPU_CPU_LIMIT, GPU_MEM_REQUEST, GPU_MEM_LIMIT, GPU_EPHEMERAL_REQUEST, GPU_EPHEMERAL_LIMIT,
+# GPU_MODEL_VOLUME_SIZE, GPU_SHM.
+#
+# Three constraints make this cluster different from the TPU one, and they drive the whole shape
+# of this manifest:
+#
+#   1. THE HOST IS ARM64. GH200 pairs an H100-class GPU with a Grace CPU. An amd64 image dies
+#      here with `exec format error`, so IMAGE_URI_GPU must be built --platform=linux/arm64 and
+#      GCLOUD_IMAGE must resolve to an arm64 child manifest. This is the single most common way
+#      to lose an hour on this cluster. Check both before submitting, it costs one command:
+#        docker manifest inspect "$GCLOUD_IMAGE" | grep -c arm64
+#        docker manifest inspect "$IMAGE_URI_GPU" | grep -c arm64
+#   2. THERE IS NO gcsfuse CSI DRIVER AND NO SHARED STORAGE. The RBAC persona cannot reach cluster
+#      storage at all. So the model does not get mounted, it gets COPIED: an initContainer pulls
+#      the checkpoint out of GCS into a plain emptyDir that the training container then reads as
+#      local disk. That copy is the GPU-side analogue of the TPU's cold gcsfuse read, and it is
+#      timed on purpose — the initContainer writes /model/.fetch_metrics.json, and because it
+#      finishes before the training container exists, that time lands in
+#      phases.submit_to_running_s (scripts/collect-phases.sh measures running-minus-created,
+#      which spans the init container) and NOT in phases.model_load_s. The wrapper below copies
+#      the fetch record verbatim into notes so the two backends can still be compared honestly.
+#      If this cluster has no egress to storage.googleapis.com, the fallback is to bake the
+#      checkpoint into IMAGE_URI_GPU at build time and set the initContainer's replicas to zero
+#      by removing it; the training container reads /model either way.
+#   3. THE PERSONA CANNOT `kubectl exec` AND POD LOGS ARE THE ONLY OUTPUT CHANNEL. There is no
+#      bucket to write results to and no way to shell in and fetch a file, so the container prints
+#      the results JSON to stdout between sentinels as well as writing it to disk. Lab 4 smuggled
+#      a GIF out the same way. It is ugly and it is the correct answer given the permissions.
+#      The emptyDir copy is lost when the pod is deleted, so harvest before GPU_TTL_S expires.
+#
+# `kubectl apply` patches, and this persona is create/delete-only — apply over an existing Job is
+# forbidden. me344_submit deletes first and then creates.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: qwen3-gpu-${TEAM}
+  namespace: ${GPU_NAMESPACE}
+  labels:
+    app.kubernetes.io/name: qwen3-codiesp
+    app.kubernetes.io/component: train
+    me344.stanford.edu/team: ${TEAM}
+    me344.stanford.edu/backend: gpu
+    me344.stanford.edu/run-id: ${RUN_ID}
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: ${BACKOFF_LIMIT}
+  activeDeadlineSeconds: ${ACTIVE_DEADLINE_S}
+  # There is exactly one GH200 for the whole class, so leave nothing behind — but the logs die
+  # with the Job, so this must be long enough to harvest in. Raise it if you are queueing.
+  ttlSecondsAfterFinished: ${GPU_TTL_S}
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: training
+      labels:
+        app.kubernetes.io/name: qwen3-codiesp
+        me344.stanford.edu/team: ${TEAM}
+        me344.stanford.edu/backend: gpu
+        me344.stanford.edu/run-id: ${RUN_ID}
+    spec:
+      restartPolicy: Never
+      # Grace. Stated explicitly so an accidental amd64 image fails at scheduling with a clear
+      # message instead of at exec time with `exec format error`.
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      initContainers:
+        # Stages the checkpoint and the tokenised CodiEsp dataset out of GCS onto node-local disk.
+        # This is the "data ingestion tier" on a cluster with no CSI storage driver.
+        - name: fetch-model
+          image: ${GCLOUD_IMAGE}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              echo "[fetch] starting $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              # GOOGLE_APPLICATION_CREDENTIALS is exported only when the key is actually there:
+              # pointing it at a missing file makes gcloud fail outright instead of falling back
+              # to whatever ambient credentials the node has.
+              if [ -f /var/secrets/google/key.json ]; then
+                export GOOGLE_APPLICATION_CREDENTIALS=/var/secrets/google/key.json
+                gcloud auth activate-service-account --key-file=/var/secrets/google/key.json
+                echo "[fetch] authenticated from the mounted ${GCP_KEY_SECRET} secret"
+              else
+                echo "[fetch] no /var/secrets/google/key.json mounted; using default credentials"
+              fi
+              start=$(date +%s)
+              gcloud storage cp -r "${MODEL_GCS_URI}/*" /model/
+              gcloud storage cp -r "${DATA_GCS_URI}/*" /data/
+              end=$(date +%s)
+              if [ ! -f /model/config.json ]; then
+                echo "[fetch] FATAL: no config.json under /model — the copy did not land" >&2
+                ls -la /model >&2
+                exit 1
+              fi
+              bytes=$(du -sb /model | cut -f1)
+              elapsed=$(( end - start ))
+              # Read by the training container's wrapper and carried verbatim into the record's
+              # notes. It is NOT part of phases.model_load_s: this copy finishes before the
+              # training container exists, so the cluster accounts for it inside
+              # phases.submit_to_running_s. Stating it keeps the GPU row's cold-fetch cost visible
+              # next to the TPU row's cold gcsfuse read instead of vanishing into the queue time.
+              printf '{"fetch_s": %s, "model_bytes": %s}\n' "$elapsed" "$bytes" > /model/.fetch_metrics.json
+              echo "[fetch] copied $bytes bytes of checkpoint in $elapsed s"
+          env:
+            - { name: CLOUDSDK_CORE_PROJECT, value: "${PROJECT}" }
+          resources:
+            requests: { cpu: "2", memory: 4Gi, ephemeral-storage: ${GPU_EPHEMERAL_REQUEST} }
+            limits:   { cpu: "4", memory: 8Gi, ephemeral-storage: ${GPU_EPHEMERAL_LIMIT} }
+          volumeMounts:
+            - { name: model, mountPath: /model }
+            - { name: data,  mountPath: /data }
+            - { name: gcp-key, mountPath: /var/secrets/google, readOnly: true }
+      containers:
+        - name: training
+          image: ${IMAGE_URI_GPU}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          command: ["/bin/bash", "-c"]
+          args:
+            # Names in ME344_SUBST_VARS are expanded by envsubst at render time; everything else
+            # ($rc, $started, $MODEL_PATH, $RESULTS_DIR, ...) survives into the container and is
+            # read from its env. Both routes carry the same value.
+            - |
+              set -uo pipefail
+              started=$(date -u +%s)
+              s2r=$(( started - SUBMIT_EPOCH ))
+              [ "$s2r" -ge 0 ] || s2r=0
+              # The initContainer copied the checkpoint out of GCS before this process existed, so
+              # that time sits in the pod's submit->running interval and NOT in
+              # phases.model_load_s. The trainer has no flag for it, so it is carried verbatim in
+              # notes: the GPU row's cold fetch is the analogue of the TPU row's cold gcsfuse read
+              # and the bottleneck analysis needs it stated, not silently dropped.
+              fetch_note=""
+              if [ -f "$FETCH_METRICS_PATH" ]; then
+                fetch_note="initContainer GCS fetch (before this container started, counted in phases.submit_to_running_s and not in model_load_s): $(tr -d '\n' < "$FETCH_METRICS_PATH")"
+              fi
+              out="$RESULTS_DIR/$RUN_ID.json"
+              mkdir -p "$RESULTS_DIR"
+              rc=0
+              python3 -u "$TRAIN_ENTRYPOINT" \
+                --backend gpu \
+                --model-path "$MODEL_PATH" \
+                --data-root "$DATA_ROOT" \
+                --out "$out" \
+                --run-id "$RUN_ID" \
+                --hw-tag "$HW_TAG" \
+                --hw-label "$HW_LABEL" \
+                --chip-model "$HW_CHIP_MODEL" \
+                --batch-size "$BATCH_SIZE" \
+                --seq-len "$SEQ_LEN" \
+                --max-steps "$MAX_STEPS" \
+                --warmup-steps "$WARMUP_STEPS" \
+                --lora-rank "$LORA_RANK" \
+                --lora-alpha "$LORA_ALPHA" \
+                --lr "$LEARNING_RATE" \
+                --dtype "$DTYPE" \
+                --remat "$REMAT" \
+                --file-cache-capacity "$FILE_CACHE_CAPACITY" \
+                --submit-to-running-s "$s2r" \
+                --util-interval "$UTIL_INTERVAL_S" \
+                --eval-every "$EVAL_EVERY_N_STEPS" \
+                --eval-examples "$EVAL_EXAMPLES" \
+                --eval-max-new-tokens "$EVAL_MAX_NEW_TOKENS" \
+                --ckpt-dir "$CKPT_DIR" \
+                --adapter-out "$ADAPTER_DIR" \
+                --notes "$fetch_note" || rc=$?
+              # Pod logs are the only output channel on this cluster. Same sentinels as the TPU and
+              # CPU jobs so that one harvester handles all three backends.
+              echo "-----BEGIN RESULTS JSON-----"
+              cat "$out" 2>/dev/null || \
+                printf '{"run_id":"%s","backend":"gpu","status":"error","error":"the training process exited %s without writing %s","phases":{"total_wall_s":%s},"steps":[],"steady":null,"memory":null,"utilization":null,"eval":null,"notes":"synthesised by the Job wrapper; the only measured number here is total_wall_s, taken with date(1) around the process"}\n' \
+                  "$RUN_ID" "$rc" "$out" "$(( $(date -u +%s) - started ))"
+              # A results file that does not end in a newline would otherwise glue its
+              # closing brace onto the END sentinel line, and the harvester drops that
+              # line as the terminator — losing the last character of the JSON.
+              echo
+              echo "-----END RESULTS JSON-----"
+              exit $rc
+          env:
+            - { name: TEAM,        value: "${TEAM}" }
+            - { name: BACKEND,     value: "gpu" }
+            - { name: RUN_ID,      value: "${RUN_ID}" }
+            - { name: SUBMIT_EPOCH, value: "${SUBMIT_EPOCH}" }
+            - { name: TRAIN_ENTRYPOINT, value: "${TRAIN_ENTRYPOINT}" }
+            # Node-local paths, populated by the initContainer above. DATA_ROOT holds the RAW
+            # CodiEsp layout (<root>/train/text_files/*.txt + *_annotations_task*_processed.tsv),
+            # which is what the trainer's --data-root reads.
+            - { name: MODEL_PATH,  value: "/model" }
+            - { name: DATA_ROOT,   value: "/data" }
+            - { name: RESULTS_DIR, value: "/results" }
+            # Orbax full-state checkpointing off: /results is a 5Gi emptyDir and the contract's
+            # checkpoint_write_s is the LoRA adapter export, which happens either way.
+            - { name: CKPT_DIR,    value: "/tmp/ckpt/${RUN_ID}" }
+            - { name: ADAPTER_DIR, value: "/results/adapters/${RUN_ID}" }
+            - { name: FETCH_METRICS_PATH, value: "/model/.fetch_metrics.json" }
+            - { name: MODEL_NAME,  value: "${MODEL_NAME}" }
+            - { name: BATCH_SIZE,  value: "${BATCH_SIZE}" }
+            - { name: SEQ_LEN,     value: "${SEQ_LEN}" }
+            - { name: MAX_STEPS,   value: "${MAX_STEPS}" }
+            - { name: WARMUP_STEPS, value: "${WARMUP_STEPS}" }
+            - { name: LORA_RANK,   value: "${LORA_RANK}" }
+            - { name: LORA_ALPHA,  value: "${LORA_ALPHA}" }
+            - { name: LEARNING_RATE, value: "${LEARNING_RATE}" }
+            - { name: DTYPE,       value: "${DTYPE}" }
+            # Identical remat policy to the TPU row: the workload has to be the same workload for
+            # the comparison to mean anything.
+            - { name: REMAT,       value: "${REMAT}" }
+            - { name: EVAL_EVERY_N_STEPS, value: "${EVAL_EVERY_N_STEPS}" }
+            - { name: EVAL_EXAMPLES, value: "${EVAL_EXAMPLES}" }
+            - { name: EVAL_MAX_NEW_TOKENS, value: "${EVAL_MAX_NEW_TOKENS}" }
+            # utilization.sample_interval_s — telemetry.py samples nvidia-smi at this period.
+            - { name: UTIL_INTERVAL_S, value: "${UTIL_INTERVAL_S}" }
+            - { name: HW_TAG,        value: "${HW_TAG}" }
+            - { name: HW_LABEL,      value: "${HW_LABEL}" }
+            - { name: HW_CHIPS,      value: "${HW_CHIPS}" }
+            - { name: HW_CHIP_MODEL, value: "${HW_CHIP_MODEL}" }
+            - { name: HW_HOST_ARCH,  value: "${HW_HOST_ARCH}" }
+            # There is no gcsfuse here, so the file-cache experiment does not apply; record that
+            # explicitly rather than leaving config.file_cache_capacity ambiguous.
+            - { name: FILE_CACHE_CAPACITY, value: "n/a" }
+          resources:
+            requests:
+              cpu: "${GPU_CPU_REQUEST}"
+              memory: ${GPU_MEM_REQUEST}
+              ephemeral-storage: ${GPU_EPHEMERAL_REQUEST}
+            limits:
+              # The physical accelerator count. One GH200 for the entire class, so asking for more
+              # than 1 means this Job never schedules.
+              nvidia.com/gpu: "1"
+              cpu: "${GPU_CPU_LIMIT}"
+              memory: ${GPU_MEM_LIMIT}
+              ephemeral-storage: ${GPU_EPHEMERAL_LIMIT}
+          volumeMounts:
+            - { name: model,   mountPath: /model, readOnly: true }
+            - { name: data,    mountPath: /data,  readOnly: true }
+            - { name: results, mountPath: /results }
+            - { name: dshm,    mountPath: /dev/shm }
+      volumes:
+        # Node-local scratch for the checkpoint. sizeLimit is an explicit bound so a runaway copy
+        # evicts this pod rather than filling the node's disk for the whole class.
+        - name: model
+          emptyDir: { sizeLimit: ${GPU_MODEL_VOLUME_SIZE} }
+        - name: data
+          emptyDir: { sizeLimit: 5Gi }
+        - name: results
+          emptyDir: { sizeLimit: 5Gi }
+        # The container default is 64 MB and the dataloader dies on it.
+        - name: dshm
+          emptyDir: { medium: Memory, sizeLimit: ${GPU_SHM} }
+        # optional: true — the pod starts without the secret. Create it only if this cluster needs
+        # explicit credentials to read the bucket:
+        #   kubectl create secret generic ${GCP_KEY_SECRET} -n ${GPU_NAMESPACE} \
+        #     --from-file=key.json=/path/to/sa-key.json
+        - name: gcp-key
+          secret:
+            secretName: ${GCP_KEY_SECRET}
+            optional: true

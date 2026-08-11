@@ -1,0 +1,196 @@
+# ME344 final project — Qwen3-4B LoRA on CodiEsp, CPU-only row, as a Kubernetes Job.
+#
+# READ THIS FIRST — WHICH CPU ARTEFACT IS THE MEASURED ONE
+# --------------------------------------------------------
+# The reported `cpu-*` row in results/ is produced by manifests/cpu-run.sh, not by this file.
+# hpcc-cluster-39 is a login node with kubectl on it, not a Kubernetes node: no kubelet, no API
+# server, so there is nothing there for a Job to be scheduled onto. The 32 cores the benchmark
+# cares about are reachable only through a local container runtime, which is what cpu-run.sh does
+# (with --cpus / --memory / --shm-size standing in for the resource stanza below).
+#
+# This manifest exists because the same container must also be schedulable as a first-class
+# Kubernetes workload: it runs the identical image and entrypoint on the CPU node pool of
+# class-tpu-cluster-west4, reading the identical data through the identical gcsfuse CSI mount.
+# That makes the storage tier uniform across all three backends and gives the CPU row a real
+# manifest rather than a shell script alone.
+#
+#   source manifests/env.sh
+#   CPU_CORES=8 CPU_K8S_CPU_REQUEST=8 CPU_K8S_CPU_LIMIT=8 me344_submit cpu
+#
+# CPU_CORES feeds the run_id (`cpu-x86-8c-...`), so set it to the cores this pod actually gets or
+# the filename will claim hardware the run did not have. A GKE default-pool node is nowhere near
+# 32 cores; asking for more than the machine type has leaves the pod Pending forever.
+#
+# Note that hardware.chips in the record is NOT this number: telemetry.py probes it with
+# os.cpu_count(), which reports the node's cores and ignores a CFS quota. On the reported CPU row
+# (manifests/cpu-run.sh on the 32-core node with --cpus=32) the two agree; on this parity manifest
+# with a smaller limit they will not, and the record's number is the one that was measured.
+#
+# envsubst template. Consumes: TEAM, TPU_NAMESPACE, IMAGE_URI_CPU, IMAGE_PULL_POLICY, RUN_ID,
+# SUBMIT_EPOCH, MODEL_NAME, BATCH_SIZE, SEQ_LEN, MAX_STEPS, WARMUP_STEPS, LORA_RANK, LORA_ALPHA,
+# LEARNING_RATE, DTYPE, REMAT, EVAL_EVERY_N_STEPS, EVAL_EXAMPLES, EVAL_MAX_NEW_TOKENS,
+# UTIL_INTERVAL_S, TRAIN_ENTRYPOINT, CPU_CORES, HW_TAG, HW_LABEL, HW_CHIPS, HW_CHIP_MODEL,
+# HW_HOST_ARCH, WORKSHOP_BUCKET, FILE_CACHE, FILE_CACHE_RANGE_READ, GCSFUSE_EPHEMERAL_LIMIT,
+# BACKOFF_LIMIT, ACTIVE_DEADLINE_S, CPU_K8S_CPU_REQUEST, CPU_K8S_CPU_LIMIT, CPU_K8S_MEM,
+# CPU_K8S_SHM.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: qwen3-cpu-${TEAM}
+  namespace: ${TPU_NAMESPACE}
+  labels:
+    # This cluster suspends Jobs that do not opt into Kueue, CPU-only ones included, so the label
+    # is required here too even though no accelerator is requested.
+    kueue.x-k8s.io/queue-name: student-queue
+    app.kubernetes.io/name: qwen3-codiesp
+    app.kubernetes.io/component: train
+    me344.stanford.edu/team: ${TEAM}
+    me344.stanford.edu/backend: cpu
+    me344.stanford.edu/run-id: ${RUN_ID}
+spec:
+  parallelism: 1
+  completions: 1
+  backoffLimit: ${BACKOFF_LIMIT}
+  activeDeadlineSeconds: ${ACTIVE_DEADLINE_S}
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: training
+        gke-gcsfuse/volumes: "true"
+        gke-gcsfuse/ephemeral-storage-limit: "${GCSFUSE_EPHEMERAL_LIMIT}"
+        gke-gcsfuse/cpu-limit: "0"
+        gke-gcsfuse/memory-limit: "0"
+      labels:
+        app.kubernetes.io/name: qwen3-codiesp
+        me344.stanford.edu/team: ${TEAM}
+        me344.stanford.edu/backend: cpu
+        me344.stanford.edu/run-id: ${RUN_ID}
+    spec:
+      serviceAccountName: jax-sa
+      restartPolicy: Never
+      # x86_64 only. There is no accelerator selector here on purpose — this pod must land on a
+      # general-purpose node. TPU nodes carry a google.com/tpu taint that this pod does not
+      # tolerate, so it cannot accidentally consume a v5e slice.
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+        - name: training
+          image: ${IMAGE_URI_CPU}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          command: ["/bin/bash", "-c"]
+          args:
+            # Names in ME344_SUBST_VARS are expanded by envsubst at render time; everything else
+            # ($rc, $started, $MODEL_PATH, ...) survives and is read from the container env.
+            - |
+              set -uo pipefail
+              started=$(date -u +%s)
+              s2r=$(( started - SUBMIT_EPOCH ))
+              [ "$s2r" -ge 0 ] || s2r=0
+              out="$RESULTS_DIR/$RUN_ID.json"
+              mkdir -p "$RESULTS_DIR"
+              rc=0
+              python3 -u "$TRAIN_ENTRYPOINT" \
+                --backend cpu \
+                --model-path "$MODEL_PATH" \
+                --data-root "$DATA_ROOT" \
+                --out "$out" \
+                --run-id "$RUN_ID" \
+                --hw-tag "$HW_TAG" \
+                --hw-label "$HW_LABEL" \
+                --chip-model "$HW_CHIP_MODEL" \
+                --batch-size "$BATCH_SIZE" \
+                --seq-len "$SEQ_LEN" \
+                --max-steps "$MAX_STEPS" \
+                --warmup-steps "$WARMUP_STEPS" \
+                --lora-rank "$LORA_RANK" \
+                --lora-alpha "$LORA_ALPHA" \
+                --lr "$LEARNING_RATE" \
+                --dtype "$DTYPE" \
+                --remat "$REMAT" \
+                --file-cache-capacity "$FILE_CACHE_CAPACITY" \
+                --submit-to-running-s "$s2r" \
+                --util-interval "$UTIL_INTERVAL_S" \
+                --eval-every "$EVAL_EVERY_N_STEPS" \
+                --eval-examples "$EVAL_EXAMPLES" \
+                --eval-max-new-tokens "$EVAL_MAX_NEW_TOKENS" \
+                --ckpt-dir "$CKPT_DIR" \
+                --adapter-out "$ADAPTER_DIR" || rc=$?
+              echo "-----BEGIN RESULTS JSON-----"
+              cat "$out" 2>/dev/null || \
+                printf '{"run_id":"%s","backend":"cpu","status":"error","error":"the training process exited %s without writing %s","phases":{"total_wall_s":%s},"steps":[],"steady":null,"memory":null,"utilization":null,"eval":null,"notes":"synthesised by the Job wrapper; the only measured number here is total_wall_s, taken with date(1) around the process"}\n' \
+                  "$RUN_ID" "$rc" "$out" "$(( $(date -u +%s) - started ))"
+              # A results file that does not end in a newline would otherwise glue its
+              # closing brace onto the END sentinel line, and the harvester drops that
+              # line as the terminator — losing the last character of the JSON.
+              echo
+              echo "-----END RESULTS JSON-----"
+              exit $rc
+          env:
+            - { name: TEAM,        value: "${TEAM}" }
+            - { name: BACKEND,     value: "cpu" }
+            - { name: RUN_ID,      value: "${RUN_ID}" }
+            - { name: SUBMIT_EPOCH, value: "${SUBMIT_EPOCH}" }
+            - { name: TRAIN_ENTRYPOINT, value: "${TRAIN_ENTRYPOINT}" }
+            - { name: MODEL_PATH,  value: "/gcs/teams/${TEAM}/models/Qwen3-4B" }
+            # Raw CodiEsp layout, exactly as on the TPU row — see tpu-train.yaml.
+            - { name: DATA_ROOT,   value: "/gcs/teams/${TEAM}/data/codiesp" }
+            - { name: RESULTS_DIR, value: "/gcs/teams/${TEAM}/results" }
+            - { name: CKPT_DIR,    value: "/tmp/ckpt/${RUN_ID}" }
+            - { name: ADAPTER_DIR, value: "/gcs/teams/${TEAM}/adapters/${RUN_ID}" }
+            - { name: MODEL_NAME,  value: "${MODEL_NAME}" }
+            - { name: BATCH_SIZE,  value: "${BATCH_SIZE}" }
+            - { name: SEQ_LEN,     value: "${SEQ_LEN}" }
+            - { name: MAX_STEPS,   value: "${MAX_STEPS}" }
+            - { name: WARMUP_STEPS, value: "${WARMUP_STEPS}" }
+            - { name: LORA_RANK,   value: "${LORA_RANK}" }
+            - { name: LORA_ALPHA,  value: "${LORA_ALPHA}" }
+            - { name: LEARNING_RATE, value: "${LEARNING_RATE}" }
+            - { name: DTYPE,       value: "${DTYPE}" }
+            - { name: REMAT,       value: "${REMAT}" }
+            - { name: EVAL_EVERY_N_STEPS, value: "${EVAL_EVERY_N_STEPS}" }
+            - { name: EVAL_EXAMPLES, value: "${EVAL_EXAMPLES}" }
+            - { name: EVAL_MAX_NEW_TOKENS, value: "${EVAL_MAX_NEW_TOKENS}" }
+            - { name: UTIL_INTERVAL_S, value: "${UTIL_INTERVAL_S}" }
+            - { name: HW_TAG,        value: "${HW_TAG}" }
+            - { name: HW_LABEL,      value: "${HW_LABEL}" }
+            - { name: HW_CHIPS,      value: "${HW_CHIPS}" }
+            - { name: HW_CHIP_MODEL, value: "${HW_CHIP_MODEL}" }
+            - { name: HW_HOST_ARCH,  value: "${HW_HOST_ARCH}" }
+            - { name: FILE_CACHE_CAPACITY, value: "${FILE_CACHE}" }
+            # JAX would otherwise probe for accelerators that are not there and log a warning per
+            # backend; pinning it keeps the CPU row honest and the logs readable.
+            - { name: JAX_PLATFORMS,   value: "cpu" }
+            - { name: OMP_NUM_THREADS, value: "${CPU_CORES}" }
+            - { name: MKL_NUM_THREADS, value: "${CPU_CORES}" }
+            - name: WANDB_API_KEY
+              valueFrom:
+                secretKeyRef: { name: wandb-secret, key: api_key, optional: true }
+          resources:
+            # Unlike the TPU Job, this one DOES take a CPU limit: the CPU count is the hardware
+            # being benchmarked, so it has to be a hard ceiling rather than a best-effort floor.
+            # Keep request == limit so the pod is Guaranteed QoS and the measurement is not
+            # perturbed by a noisy neighbour on the same node.
+            requests:
+              cpu: "${CPU_K8S_CPU_REQUEST}"
+              memory: ${CPU_K8S_MEM}
+            limits:
+              cpu: "${CPU_K8S_CPU_LIMIT}"
+              memory: ${CPU_K8S_MEM}
+          volumeMounts:
+            - { name: gcs,  mountPath: /gcs }
+            - { name: dshm, mountPath: /dev/shm }
+      volumes:
+        - name: gcs
+          csi:
+            driver: gcsfuse.csi.storage.gke.io
+            volumeAttributes:
+              bucketName: ${WORKSHOP_BUCKET}
+              mountOptions: "implicit-dirs"
+              # Same knob as the TPU Job so the storage tier is identical across backends. Note
+              # that me344_resolve only appends the `-filecache` run_id suffix on the TPU row,
+              # where the experiment lives — if you sweep the cache here too, set RUN_VARIANT so
+              # the two runs do not collide on one filename.
+              fileCacheCapacity: "${FILE_CACHE}"
+              fileCacheForRangeRead: "${FILE_CACHE_RANGE_READ}"
+        - name: dshm
+          emptyDir: { medium: Memory, sizeLimit: ${CPU_K8S_SHM} }

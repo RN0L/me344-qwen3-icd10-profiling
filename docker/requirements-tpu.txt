@@ -1,0 +1,20 @@
+# TPU v5e row: 2x4 slice = 8 chips, 16 GiB HBM per chip, x86_64 host.
+-r requirements-common.txt
+
+# libtpu is served from the JAX release index rather than PyPI, so Dockerfile.tpu passes
+#   -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
+# on the uv command line, exactly as Lab 2's working build did. Without that find-links the
+# `tpu` extra (which requires libtpu==0.0.42.*) can fail to resolve.
+#
+# 0.10.2 is the version that trained Gemma 3 4B end-to-end on this slice. It is also the version
+# requirements-cuda.txt and requirements-cpu.txt install, so all three rows share one JAX.
+jax[tpu]==0.10.2
+jaxlib==0.10.2
+
+# jax[tpu]==0.10.2 declares `libtpu==0.0.42.*`, which is a range: a rebuild next month would pick
+# up 0.0.42.2 and the TPU row would no longer be running the runtime that produced the numbers in
+# results/. Pinned to the exact release inside that range (0.0.42.1 is the newest 0.0.42.* on
+# PyPI, cp312 manylinux_2_31 x86_64, which is what the v5e host is). This is the one dependency
+# in the whole stack that is genuinely accelerator-specific — there is no aarch64 libtpu, which
+# is also why requirements-common.txt installs google-tunix WITHOUT its [prod] extra.
+libtpu==0.0.42.1

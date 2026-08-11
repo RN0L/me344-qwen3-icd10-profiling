@@ -1,0 +1,68 @@
+{
+  "run_id": "cpu-x86-32c-bs1-seq1024",
+  "backend": "cpu",
+  "timestamp_utc": "2026-08-10T23:53:10Z",
+  "hardware": {
+    "label": "CPU 32-core x86_64",
+    "chips": 32,
+    "chip_model": "Intel(R) Xeon(R) CPU E5-2670 0 @ 2.60GHz",
+    "host_arch": "x86_64",
+    "hbm_per_chip_bytes": 33400209408
+  },
+  "config": {
+    "model": "Qwen/Qwen3-4B",
+    "batch_size": 1,
+    "seq_len": 1024,
+    "lora_rank": 32,
+    "lora_alpha": 64.0,
+    "dtype": "bfloat16",
+    "max_steps": 3,
+    "remat": "DECODER",
+    "file_cache_capacity": "none",
+    "lr": 0.001,
+    "seed": 0,
+    "lora_modules": ".*q_proj|.*k_proj|.*v_proj|.*o_proj|.*gate_proj|.*up_proj|.*down_proj",
+    "warmup_steps": 10,
+    "model_path": "/home/admin/final-project/models/Qwen3-4B",
+    "data_root": "/home/admin/final-project/data/sft",
+    "dtype_fields_applied": [
+      "dtype",
+      "param_dtype"
+    ],
+    "trainable_lora_params": 66060288,
+    "devices": 1,
+    "step_sync": true
+  },
+  "phases": {
+    "submit_to_running_s": 0.0,
+    "image_pull_s": 0.0,
+    "model_load_s": 15.750941545935348,
+    "compile_s": 0.0,
+    "steady_state_s": 0.0,
+    "checkpoint_write_s": 0.0,
+    "other_s": 24.61532561806962,
+    "total_wall_s": 40.36626716400497
+  },
+  "steps": [],
+  "steady": null,
+  "memory": null,
+  "utilization": {
+    "mean_pct": 6.132258064516129,
+    "max_pct": 31.5,
+    "sample_interval_s": 1.0,
+    "n_samples": 31,
+    "source": "psutil.cpu_percent() + psutil.Process().memory_info().rss",
+    "mean_memory_pct": 25.177443430654538,
+    "max_memory_pct": 49.12899228730488,
+    "n_probe_errors": 0
+  },
+  "eval": {
+    "micro_f1": null,
+    "n_examples": 0,
+    "note": "not evaluated in this run"
+  },
+  "status": "error",
+  "error": "AssertionError: CodiEsp split directory not found: /home/admin/final-project/data/sft/train",
+  "notes": "phases.other_s is composed of: jax_init=9.64s lora_wrap=14.31s data_prep=0.65s | phases.submit_to_running_s and phases.image_pull_s are 0.0 on the CPU backend: the run starts directly on the node, with no scheduler queue and no container image to pull.",
+  "error_traceback": "Traceback (most recent call last):\n  File \"/home/admin/final-project/repo/src/train_qwen3_icd.py\", line 1419, in main\n    train(run)\n  File \"/home/admin/final-project/repo/src/train_qwen3_icd.py\", line 1236, in train\n    train_examples = load_codiesp_split(data_root / a.train_split, tasks, a.max_doc_chars)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/admin/final-project/repo/src/train_qwen3_icd.py\", line 374, in load_codiesp_split\n    assert split_dir.is_dir(), f\"CodiEsp split directory not found: {split_dir}\"\n           ^^^^^^^^^^^^^^^^^^\nAssertionError: CodiEsp split directory not found: /home/admin/final-project/data/sft/train\n"
+}

@@ -1,0 +1,24 @@
+# Build-context allowlist.
+#
+# Everything is excluded by default and re-admitted one line at a time. This is deliberate: the
+# build context is the repo root (the Dockerfiles need src/), and the repo root is also where the
+# CodiEsp corpus, captured runs, kubeconfigs and gcloud credentials end up during a session. A
+# deny-list would eventually leak one of them into a pushed image; an allow-list cannot.
+#
+# Adding a `!` line here is the ONLY way to get a file into an image. Do not add data/ or
+# results/ — the trainer reads the corpus from the gcsfuse mount or the node filesystem at run
+# time, never from inside the image.
+*
+
+!src
+!docker
+
+# ...and inside the two admitted trees, keep local junk out. Later patterns win, so these
+# override the `!` lines above.
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.ipynb_checkpoints
+**/.pytest_cache
+**/.DS_Store
+docker/images.env

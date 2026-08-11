@@ -1,0 +1,43 @@
+# Backend-independent half of the Qwen3-4B LoRA workload.
+#
+# All three images install this file unchanged, then add exactly one line of their own: the JAX
+# distribution for their accelerator. That is the whole point — the benchmark's claim is that the
+# CPU, GPU and TPU rows run the same Python on the same framework version, so the only thing that
+# may differ between the images is the PJRT plugin.
+#
+# Every pin is exact. `>=` here would mean the numbers in results/ stop being reproducible the
+# next time someone rebuilds.
+
+# ---------------------------------------------------------------------------------------------
+# Training framework.
+#
+# Pinned to git SHAs, not releases: Tunix ships Qwen 3 support (tunix.models.qwen3) ahead of its
+# PyPI cadence, and these two SHAs are the pair Lab 2 trained with successfully on this cluster.
+#
+# NOTE the missing [prod] extra. google-tunix[prod] pulls `jax[tpu]>=0.6.0`, and libtpu publishes
+# x86_64 wheels only — with [prod] the ARM64 GH200 image cannot resolve at all, and the CPU image
+# would carry ~200 MB of dead TPU runtime. requirements-tpu.txt adds `jax[tpu]==0.10.2` by hand,
+# which is precisely what [prod] would have contributed, only pinned.
+google-tunix @ git+https://github.com/google/tunix@c00f424b47964758361869233e72ca3b1a73119f
+qwix @ git+https://github.com/google/qwix@03b4c1d5040cfa4165f14930b13351a5585717f4
+
+# ---------------------------------------------------------------------------------------------
+# Model + data plumbing. transformers is additionally forced through requirements-override.txt
+# because tunix caps it at 4.57.1; see that file for why.
+transformers==5.13.1
+datasets==5.0.0
+
+# tunix -> kagglehub -> kagglesdk. kagglesdk 0.1.24 changed the client surface kagglehub calls,
+# which breaks the import chain at `import tunix`. 0.1.23 is the last good one (Lab 2 shipped
+# this as the constraint `kagglesdk<0.1.24`; pinned exactly here).
+kagglesdk==0.1.23
+
+# Optional metrics sink. The trainer only wires W&B up when WANDB_API_KEY is present in the pod
+# env, so this being installed costs nothing on a run without the secret.
+wandb==0.28.0
+
+# ---------------------------------------------------------------------------------------------
+# Telemetry and eval helpers used by src/ to fill docs/metrics-contract.md.
+psutil==7.2.2          # memory.peak_bytes on the CPU row (peak RSS) + host utilisation sampling
+pandas==3.0.5          # CodiEsp *_annotations_task{1,2,3}_processed.tsv parsing
+scikit-learn==1.9.0    # eval.micro_f1 — the functional sanity check, not a graded metric

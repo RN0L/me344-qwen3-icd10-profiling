@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.uv/
+
+# Model weights and checkpoints — these live in GCS, never in git.
+# Qwen3-4B alone is 7.6 GB.
+models/
+*.safetensors
+*.bin
+*.ckpt
+checkpoints/
+*-adapter/
+
+# Dataset — CodiEsp is CC-BY 4.0 and freely downloadable; scripts/fetch-data.sh
+# reproduces it. Keeping the corpus out of git keeps the repo reviewable and
+# keeps redistribution terms simple.
+data/
+*.zip
+*.tar.gz
+
+# Derived data from prepare_data.py — regenerate, do not commit.
+# dataset_stats.json IS committed (see !rule below) because the report cites it.
+data/*.jsonl
+
+# Run logs and scratch
+*.log
+logs/
+tmp/
+scratch/
+.wandb/
+wandb/
+
+# Rendered manifests — the templates are the source of truth, envsubst output is not
+manifests/*.rendered.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+
+# --- Deliberately tracked despite the rules above ---
+# The measured results ARE the deliverable. Never ignore them.
+!results/
+!results/*.json
+!results/*.png
+!docs/dataset_stats.json
+
+# Generated on the node by docker/build.sh — machine-specific, never committed.
+docker/images.env

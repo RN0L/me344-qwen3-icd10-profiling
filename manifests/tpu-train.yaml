@@ -1,0 +1,244 @@
+# ME344 final project — Qwen3-4B LoRA on CodiEsp, TPU v5e 2x4 (8 chips, single host).
+#
+# Cluster : class-tpu-cluster-west4   context gke_soe-hpccenter_us-west4_class-tpu-cluster-west4
+# Namespace: default — shared by the whole class, so every name here is ${TEAM}-suffixed. That
+#            suffix is the only isolation this cluster gives you; two students picking the same
+#            job name overwrite each other's work.
+#
+# Render and submit (never `kubectl apply` — see below):
+#   source manifests/env.sh && me344_submit tpu && me344_wait tpu && me344_harvest tpu
+#
+# This is an envsubst template. It consumes: TEAM, TPU_NAMESPACE, IMAGE_URI_TPU,
+# IMAGE_PULL_POLICY, RUN_ID, SUBMIT_EPOCH, MODEL_NAME, BATCH_SIZE, SEQ_LEN, MAX_STEPS,
+# WARMUP_STEPS, LORA_RANK, LORA_ALPHA, LEARNING_RATE, DTYPE, REMAT, EVAL_EVERY_N_STEPS,
+# EVAL_EXAMPLES, EVAL_MAX_NEW_TOKENS, UTIL_INTERVAL_S, TRAIN_ENTRYPOINT, HW_TAG, HW_LABEL,
+# HW_CHIPS, HW_CHIP_MODEL, HW_HOST_ARCH, WORKSHOP_BUCKET, FILE_CACHE, FILE_CACHE_RANGE_READ,
+# GCSFUSE_EPHEMERAL_LIMIT, JAX_CACHE_DIR, BACKOFF_LIMIT, ACTIVE_DEADLINE_S, TPU_MEM,
+# TPU_CPU_REQUEST, TPU_SHM.
+#
+# Four things here are load-bearing and were each learned by watching them fail:
+#   1. `kueue.x-k8s.io/queue-name: student-queue` — without the label Kueue never admits the Job
+#      and it sits Pending forever with no error to read.
+#   2. `gke-gcsfuse/volumes: "true"` — without the annotation the CSI driver never injects the
+#      sidecar and the /gcs mount simply does not appear.
+#   3. `implicit-dirs` — GCS has no directories, only key prefixes. Without it a glob over the
+#      mount finds nothing and the failure reads as a missing model rather than a mount option.
+#   4. `/dev/shm` as a memory-medium emptyDir — the container default is 64 MB and the dataloader
+#      dies on it.
+#
+# `kubectl apply` patches, and the class RBAC persona is create/delete-only, so apply over an
+# existing Job is forbidden. me344_submit deletes first and then creates.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: qwen3-tpu-${TEAM}
+  namespace: ${TPU_NAMESPACE}
+  labels:
+    # Kueue admission. This label is what makes the Job schedulable at all on this cluster.
+    kueue.x-k8s.io/queue-name: student-queue
+    app.kubernetes.io/name: qwen3-codiesp
+    app.kubernetes.io/component: train
+    me344.stanford.edu/team: ${TEAM}
+    me344.stanford.edu/backend: tpu
+    me344.stanford.edu/run-id: ${RUN_ID}
+spec:
+  # One host, 8 chips, one pod. A v5e 2x4 slice is single-host: the 8 chips are addressed by one
+  # process through JAX's device mesh, so this is not a multi-pod JobSet.
+  parallelism: 1
+  completions: 1
+  # No retries. A silent retry would splice two attempts into one set of phase timings and the
+  # cold-load measurement is exactly what this project is about.
+  backoffLimit: ${BACKOFF_LIMIT}
+  activeDeadlineSeconds: ${ACTIVE_DEADLINE_S}
+  # Deliberately no ttlSecondsAfterFinished: a TPU node scales down once idle and takes the pod —
+  # and its logs — with it. Keep the Job object until me344_harvest has read it.
+  template:
+    metadata:
+      annotations:
+        # The gcsfuse CSI driver injects a sidecar, which makes `kubectl logs` ambiguous. This
+        # tells kubectl which container to read without an explicit -c.
+        kubectl.kubernetes.io/default-container: training
+        gke-gcsfuse/volumes: "true"
+        # The file cache lives in the sidecar's ephemeral storage, so this limit must exceed
+        # FILE_CACHE. "0" means unlimited.
+        gke-gcsfuse/ephemeral-storage-limit: "${GCSFUSE_EPHEMERAL_LIMIT}"
+        # "0" removes the sidecar's own cpu/memory ceiling. During a cold checkpoint read the
+        # gcsfuse sidecar, not the training container, is the busy process — capping it would
+        # throttle the exact path this benchmark exists to measure.
+        gke-gcsfuse/cpu-limit: "0"
+        gke-gcsfuse/memory-limit: "0"
+      labels:
+        app.kubernetes.io/name: qwen3-codiesp
+        me344.stanford.edu/team: ${TEAM}
+        me344.stanford.edu/backend: tpu
+        me344.stanford.edu/run-id: ${RUN_ID}
+    spec:
+      # Workload Identity service account that can read the workshop bucket. The gcsfuse sidecar
+      # authenticates as this SA; without it the mount fails with a permissions error.
+      serviceAccountName: jax-sa
+      restartPolicy: Never
+      # All three selectors are required. The accelerator and topology labels pick a v5e 2x4 node
+      # pool; the zone pins it to where that pool exists. A typo in any one of them leaves the pod
+      # unschedulable forever with no obvious error.
+      nodeSelector:
+        cloud.google.com/gke-tpu-accelerator: tpu-v5-lite-podslice
+        cloud.google.com/gke-tpu-topology: 2x4
+        topology.kubernetes.io/zone: us-west4-a
+      containers:
+        - name: training
+          image: ${IMAGE_URI_TPU}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          command: ["/bin/bash", "-c"]
+          args:
+            # Names that appear in ME344_SUBST_VARS (RUN_ID, BATCH_SIZE, SEQ_LEN, ...) are
+            # expanded by envsubst at render time; the rest ($rc, $started, $MODEL_PATH,
+            # $RESULTS_DIR, ...) survive into the container and are read from its env. Both
+            # routes carry the same value, because the env: block below is rendered from the
+            # same variables.
+            - |
+              set -uo pipefail
+              # phases.submit_to_running_s measured from inside the pod: now minus the epoch that
+              # me344_submit stamped at `kubectl create` time. It cannot separate the image pull
+              # from the Kueue wait, so scripts/collect-phases.sh overwrites it with the cluster's
+              # own timestamps whenever the driver is in the path. It is passed anyway so that a
+              # hand-submitted run is not left with a null there.
+              started=$(date -u +%s)
+              s2r=$(( started - SUBMIT_EPOCH ))
+              [ "$s2r" -ge 0 ] || s2r=0
+              out="$RESULTS_DIR/$RUN_ID.json"
+              mkdir -p "$RESULTS_DIR"
+              rc=0
+              python3 -u "$TRAIN_ENTRYPOINT" \
+                --backend tpu \
+                --model-path "$MODEL_PATH" \
+                --data-root "$DATA_ROOT" \
+                --out "$out" \
+                --run-id "$RUN_ID" \
+                --hw-tag "$HW_TAG" \
+                --hw-label "$HW_LABEL" \
+                --chip-model "$HW_CHIP_MODEL" \
+                --batch-size "$BATCH_SIZE" \
+                --seq-len "$SEQ_LEN" \
+                --max-steps "$MAX_STEPS" \
+                --warmup-steps "$WARMUP_STEPS" \
+                --lora-rank "$LORA_RANK" \
+                --lora-alpha "$LORA_ALPHA" \
+                --lr "$LEARNING_RATE" \
+                --dtype "$DTYPE" \
+                --remat "$REMAT" \
+                --file-cache-capacity "$FILE_CACHE_CAPACITY" \
+                --submit-to-running-s "$s2r" \
+                --util-interval "$UTIL_INTERVAL_S" \
+                --eval-every "$EVAL_EVERY_N_STEPS" \
+                --eval-examples "$EVAL_EXAMPLES" \
+                --eval-max-new-tokens "$EVAL_MAX_NEW_TOKENS" \
+                --ckpt-dir "$CKPT_DIR" \
+                --adapter-out "$ADAPTER_DIR" || rc=$?
+              # The results JSON is written to the bucket, but it is also echoed here so that the
+              # harvest path is identical on all three backends (on stanford-pilot the pod log is
+              # the ONLY output channel, so every backend uses the same sentinels).
+              echo "-----BEGIN RESULTS JSON-----"
+              cat "$out" 2>/dev/null || \
+                printf '{"run_id":"%s","backend":"tpu","status":"error","error":"the training process exited %s without writing %s","phases":{"total_wall_s":%s},"steps":[],"steady":null,"memory":null,"utilization":null,"eval":null,"notes":"synthesised by the Job wrapper; the only measured number here is total_wall_s, taken with date(1) around the process"}\n' \
+                  "$RUN_ID" "$rc" "$out" "$(( $(date -u +%s) - started ))"
+              # A results file that does not end in a newline would otherwise glue its
+              # closing brace onto the END sentinel line, and the harvester drops that
+              # line as the terminator — losing the last character of the JSON.
+              echo
+              echo "-----END RESULTS JSON-----"
+              exit $rc
+          env:
+            - { name: TEAM,        value: "${TEAM}" }
+            - { name: BACKEND,     value: "tpu" }
+            - { name: RUN_ID,      value: "${RUN_ID}" }
+            # Unix epoch at `kubectl create` time. The script subtracts it from its own start time
+            # to fill phases.submit_to_running_s — Kueue admission plus node boot plus image pull.
+            - { name: SUBMIT_EPOCH, value: "${SUBMIT_EPOCH}" }
+            - { name: TRAIN_ENTRYPOINT, value: "${TRAIN_ENTRYPOINT}" }
+            # Paths inside the gcsfuse mount.
+            - { name: MODEL_PATH,  value: "/gcs/teams/${TEAM}/models/Qwen3-4B" }
+            # DATA_ROOT, not DATA_PATH: the trainer's --data-root wants the RAW CodiEsp layout
+            # (<root>/train/text_files/*.txt plus <root>/train/*_annotations_task*_processed.tsv),
+            # which is what env.sh stages to ${DATA_GCS_URI}. The jsonl that prepare_data.py
+            # writes is for the report, not for this loop.
+            - { name: DATA_ROOT,   value: "/gcs/teams/${TEAM}/data/codiesp" }
+            - { name: RESULTS_DIR, value: "/gcs/teams/${TEAM}/results" }
+            # Orbax full-state checkpointing, off by default: it would write gigabytes to the
+            # bucket inside the timed run and swamp phases.checkpoint_write_s, which the contract
+            # defines as the LoRA adapter export. Set a path here only if you want it.
+            - { name: CKPT_DIR,    value: "/gcs/teams/${TEAM}/ckpt/${RUN_ID}" }
+            - { name: ADAPTER_DIR, value: "/gcs/teams/${TEAM}/adapters/${RUN_ID}" }
+            # Workload configuration — identical on all three backends except BATCH_SIZE.
+            - { name: MODEL_NAME,  value: "${MODEL_NAME}" }
+            - { name: BATCH_SIZE,  value: "${BATCH_SIZE}" }
+            - { name: SEQ_LEN,     value: "${SEQ_LEN}" }
+            - { name: MAX_STEPS,   value: "${MAX_STEPS}" }
+            - { name: WARMUP_STEPS, value: "${WARMUP_STEPS}" }
+            - { name: LORA_RANK,   value: "${LORA_RANK}" }
+            - { name: LORA_ALPHA,  value: "${LORA_ALPHA}" }
+            - { name: LEARNING_RATE, value: "${LEARNING_RATE}" }
+            - { name: DTYPE,       value: "${DTYPE}" }
+            - { name: REMAT,       value: "${REMAT}" }
+            # In-loop eval is 0 on purpose: an eval pass between timed steps would land inside
+            # steady.median_step_s. EVAL_EXAMPLES drives the one post-training sanity decode.
+            - { name: EVAL_EVERY_N_STEPS, value: "${EVAL_EVERY_N_STEPS}" }
+            - { name: EVAL_EXAMPLES, value: "${EVAL_EXAMPLES}" }
+            - { name: EVAL_MAX_NEW_TOKENS, value: "${EVAL_MAX_NEW_TOKENS}" }
+            - { name: UTIL_INTERVAL_S, value: "${UTIL_INTERVAL_S}" }
+            # Hardware block for the metrics contract. Capacity is probed at runtime from
+            # jax.local_devices()[0].memory_stats(); only the descriptive fields come from here.
+            - { name: HW_TAG,        value: "${HW_TAG}" }
+            - { name: HW_LABEL,      value: "${HW_LABEL}" }
+            - { name: HW_CHIPS,      value: "${HW_CHIPS}" }
+            - { name: HW_CHIP_MODEL, value: "${HW_CHIP_MODEL}" }
+            - { name: HW_HOST_ARCH,  value: "${HW_HOST_ARCH}" }
+            # Recorded verbatim into config.file_cache_capacity so a results file always states
+            # which side of the experiment it came from.
+            - { name: FILE_CACHE_CAPACITY, value: "${FILE_CACHE}" }
+            - { name: FILE_CACHE_RANGE_READ, value: "${FILE_CACHE_RANGE_READ}" }
+            # Persistent XLA compile cache. Empty = disabled, which is the correct default: a warm
+            # cache hides phases.compile_s. Point it at the bucket for the mitigation re-measure.
+            - { name: JAX_COMPILATION_CACHE_DIR, value: "${JAX_CACHE_DIR}" }
+            # optional: true means the pod starts fine with no secret and simply skips W&B.
+            - name: WANDB_API_KEY
+              valueFrom:
+                secretKeyRef: { name: wandb-secret, key: api_key, optional: true }
+          ports:
+            - { name: tpu-worker, containerPort: 8431 }
+          resources:
+            requests:
+              # A CPU *request* guarantees a floor. There is deliberately no CPU *limit*: a limit
+              # sets a CFS quota, and throttling the process would distort the gcsfuse read path
+              # that this benchmark exists to measure.
+              # Caveat: Kueue only admits a workload whose every requested resource appears in the
+              # ClusterQueue's resource groups. Lab 2's Job requested tpu and memory but never cpu.
+              # If `kubectl describe workload` reports the workload inadmissible because cpu is not
+              # covered, delete this one line — the memory bound and the chip count still stand.
+              cpu: "${TPU_CPU_REQUEST}"
+              memory: ${TPU_MEM}
+            limits:
+              # The physical accelerator count. 8 chips = the whole 2x4 slice.
+              google.com/tpu: "8"
+              memory: ${TPU_MEM}
+          volumeMounts:
+            - { name: gcs,  mountPath: /gcs }
+            - { name: dshm, mountPath: /dev/shm }
+      volumes:
+        - name: gcs
+          csi:
+            driver: gcsfuse.csi.storage.gke.io
+            volumeAttributes:
+              bucketName: ${WORKSHOP_BUCKET}
+              mountOptions: "implicit-dirs"
+              # THE experiment. Lab 2's training Job carried no fileCacheCapacity at all and lost
+              # roughly 27 minutes streaming the checkpoint from GCS with the chips idle. Run this
+              # Job once with FILE_CACHE=0 (the defect) and once with FILE_CACHE=20Gi (the fix)
+              # and diff phases.model_load_s — the numbers in the report come from those two
+              # records, never from this comment. Values are strings: "0" disables, "-1" is
+              # unbounded, "20Gi" is a bound.
+              fileCacheCapacity: "${FILE_CACHE}"
+              # safetensors reads the checkpoint in ranges. With this false a ranged read bypasses
+              # the cache entirely, so capacity alone would appear to do nothing.
+              fileCacheForRangeRead: "${FILE_CACHE_RANGE_READ}"
+        - name: dshm
+          emptyDir: { medium: Memory, sizeLimit: ${TPU_SHM} }

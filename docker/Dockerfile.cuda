@@ -1,0 +1,93 @@
+# syntax=docker/dockerfile:1
+# =============================================================================================
+# GPU row — NVIDIA GH200 480GB on the stanford-pilot GKE cluster (ns-student39).
+#
+# Build context is the REPO ROOT:
+#   docker build --platform linux/arm64 -f docker/Dockerfile.cuda -t <uri> .
+# docker/build.sh does that for you, including registering the aarch64 binfmt handler so an
+# x86_64 build host can produce this image at all.
+#
+# ---------------------------------------------------------------------------------------------
+# ARCHITECTURE — read this before changing the FROM line.
+#
+# GH200 is Grace + Hopper: the *host* CPU is 72 ARM Neoverse-V2 cores, not x86. An amd64 image
+# scheduled onto this node does not degrade, it dies at exec with `exec format error`, and
+# because RBAC on this cluster forbids `kubectl exec` the only evidence is one line of pod log.
+# That is why linux/arm64 appears twice, on FROM and on the build command line.
+#
+# ---------------------------------------------------------------------------------------------
+# BASE IMAGE CHOICE — python:3.12-slim + jax[cuda12] pip wheels, NOT nvcr.io/nvidia/jax.
+#
+#   * nvcr.io/nvidia/jax does publish arm64/sbsa tags that run on GH200, and it would save the
+#     ~4 GB of CUDA userspace this image carries. It was rejected because it ships NVIDIA's own
+#     JAX build at NVIDIA's own cadence. The entire premise of this benchmark is that all three
+#     backend rows execute the same workload on the same framework, and tunix at the pinned SHA
+#     is only known-good against jax 0.10.2 — that is the version that completed a LoRA
+#     fine-tune on the v5e in Lab 2. Taking NVIDIA's JAX would swap the framework out from under
+#     the GPU row and make its numbers incomparable to the other two.
+#   * The pip route was verified to be possible before it was chosen: jaxlib, jax-cuda12-pjrt
+#     and jax-cuda12-plugin all publish cp312 manylinux_2_27_aarch64 wheels at 0.10.2, as does
+#     every nvidia-*-cu12 runtime wheel they pull in. See requirements-cuda.txt for the frozen
+#     list.
+#   * The cost is honest and should be reported, not hidden: this image is large, so its
+#     phases.image_pull_s will be the worst of the three. That is a finding, not a defect.
+# =============================================================================================
+
+# Same digest as the other two images — it is a multi-arch index, so --platform selects the
+# arm64 child manifest from it. One pin, three architectures.
+FROM --platform=linux/arm64 python:3.12-slim@sha256:229a2c5bfa27522db7815ea81f9bed70af17ccb9de9fc7ad142b1877b5830d36
+
+# The uv 0.11.26 index has an arm64 child manifest, so this resolves to the aarch64 binary.
+COPY --from=ghcr.io/astral-sh/uv:0.11.26 /uv /usr/local/bin/uv
+
+# git: tunix and qwix are git+https SHA requirements.
+# libnuma1: NCCL and nvshmem dlopen libnuma at init on multi-socket hosts, and Grace presents as
+#           one. Harmless (~30 kB) and avoids a startup warning that looks like a real fault.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git ca-certificates libnuma1 \
+ && rm -rf /var/lib/apt/lists/*
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/src:/app \
+    ME344_EXPECT_BACKEND=cuda
+
+# GKE mounts the host NVIDIA driver (libcuda.so, nvidia-smi) at /usr/local/nvidia and expects the
+# image to put it on PATH and LD_LIBRARY_PATH itself. Skip this and nvidia-smi is simply absent,
+# which means docs/metrics-contract.md's utilization block and memory.peak_bytes for the GPU row
+# cannot be filled — and with pod exec disabled there is no way to diagnose it after the fact.
+# The CUDA userspace libraries themselves come from the pip wheels, not from here; only the
+# driver-side pieces do.
+ENV PATH=/usr/local/nvidia/bin:${PATH} \
+    LD_LIBRARY_PATH=/usr/local/nvidia/lib64:/usr/local/nvidia/lib
+
+WORKDIR /app
+
+# --- dependency layer ------------------------------------------------------------------------
+# Requirements first, src/ last, so a code edit does not re-download the CUDA wheels. That
+# matters more here than in the other two images: under qemu emulation this layer takes tens of
+# minutes to build.
+COPY docker/requirements-common.txt \
+     docker/requirements-override.txt \
+     docker/requirements-cuda.txt \
+     /app/requirements/
+
+RUN uv pip install --system --no-cache \
+      --override /app/requirements/requirements-override.txt \
+      -r /app/requirements/requirements-cuda.txt
+
+# --- application layer -----------------------------------------------------------------------
+COPY docker/smoke.py /app/smoke.py
+COPY src/ /app/src/
+
+# manifests/env.sh sets GPU_ENTRYPOINT=/app/train_gpu.py and manifests/gpu-train.yaml runs it with
+# no arguments. docker/entrypoint.py turns the pod environment into the trainer's argv and takes
+# its backend from this filename — note that the file is train_GPU.py even though the image is
+# built from Dockerfile.cuda: `cuda` is the JAX plugin's name, `gpu` is the backend name used by
+# telemetry.BACKENDS, by the run_id convention and by every other file in this repo.
+COPY docker/entrypoint.py /app/train_gpu.py
+
+# Default to the self-test. ME344_EXPECT_BACKEND=cuda above makes it exit non-zero if the CUDA
+# plugin failed to load — without that check JAX falls back to the CPU backend and the GPU row
+# would quietly benchmark 72 ARM cores while reporting itself as a GH200.
+CMD ["python3", "/app/smoke.py"]

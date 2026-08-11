@@ -1,0 +1,13 @@
+# uv --override list. An override replaces EVERY declared constraint on the named package
+# anywhere in the dependency graph, including constraints declared by transitive dependencies.
+# It is a blunt instrument and this file should stay one line long.
+#
+# Why it is needed: google-tunix pins `transformers<=4.57.1` (see its pyproject: 4.57.2 has a
+# known bug). That cap predates the transformers 5.x loader, and the 5.x loader is what reads
+# the Gemma 3 / Qwen 3 safetensors layout that this project trains on. The Lab 2 image that
+# actually completed a 100-step LoRA fine-tune on this exact v5e slice ran transformers 5.13.1
+# under this same override, so 5.13.1 is a measured-good value, not a guess.
+#
+# Do not relax this to a range. An unpinned transformers is the single most likely way for a
+# rebuild of these images to stop matching the numbers already in results/.
+transformers==5.13.1

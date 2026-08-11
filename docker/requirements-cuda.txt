@@ -1,0 +1,37 @@
+# GPU row: NVIDIA GH200 480GB (Grace Hopper). Hopper GPU, ARM64 Grace host — this file is
+# resolved for linux/aarch64, which is the constraint that drives every pin below.
+-r requirements-common.txt
+
+# Same JAX version as the TPU and CPU rows. jaxlib, jax-cuda12-pjrt and jax-cuda12-plugin all
+# publish cp312 manylinux_2_27_aarch64 wheels at 0.10.2 (verified against PyPI), which is what
+# makes "identical framework across three backends" true rather than aspirational.
+#
+# cuda12, not cuda13: the CUDA 12 wheel family is the one with a complete aarch64 matrix, and
+# CUDA 12.x minor-version compatibility means these userspace libs run against any >=525 driver,
+# so we do not need to know the GKE node's exact driver build in advance.
+jax[cuda12]==0.10.2
+jaxlib==0.10.2
+jax-cuda12-pjrt==0.10.2
+jax-cuda12-plugin[with-cuda]==0.10.2
+
+# jax-cuda12-plugin[with-cuda] declares only lower bounds on the CUDA runtime wheels, so an
+# unfrozen rebuild would pick up whatever NVIDIA published that morning — the opposite of a
+# non-breaking pin. These are the versions that resolution selects today, frozen in place. Each
+# one was checked to publish a manylinux aarch64 wheel; that check is the whole reason this list
+# is written out rather than left implicit.
+#
+# Regenerate with:
+#   uv pip compile --python-version 3.12 --python-platform aarch64-manylinux2014 \
+#       docker/requirements-cuda.txt -o docker/requirements-cuda.lock
+nvidia-cublas-cu12==12.9.2.10
+nvidia-cuda-cupti-cu12==12.9.79
+nvidia-cuda-nvcc-cu12==12.9.86
+nvidia-cuda-nvrtc-cu12==12.9.86
+nvidia-cuda-runtime-cu12==12.9.79
+nvidia-cudnn-cu12==9.24.0.43
+nvidia-cufft-cu12==11.4.1.4
+nvidia-cusolver-cu12==11.7.5.82
+nvidia-cusparse-cu12==12.5.10.65
+nvidia-nccl-cu12==2.30.7
+nvidia-nvjitlink-cu12==12.9.86
+nvidia-nvshmem-cu12==3.7.2
