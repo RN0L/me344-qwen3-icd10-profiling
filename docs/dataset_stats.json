@@ -1,0 +1,330 @@
+{
+  "generated_utc": "2026-08-12T00:46:01Z",
+  "generator": "src/prepare_data.py",
+  "argv": [
+    "--data-root",
+    "/private/tmp/claude-501/-Users-leonardarnold-Documents-Stanford-HPC/b317d1ef-ba40-40d5-a2e6-4f62f074be21/scratchpad/codiesp/train_dev",
+    "--out",
+    "/private/tmp/claude-501/-Users-leonardarnold-Documents-Stanford-HPC/b317d1ef-ba40-40d5-a2e6-4f62f074be21/scratchpad/sft",
+    "--tokenizer",
+    "Qwen/Qwen3-0.6B",
+    "--no-upload"
+  ],
+  "data_root": "/private/tmp/claude-501/-Users-leonardarnold-Documents-Stanford-HPC/b317d1ef-ba40-40d5-a2e6-4f62f074be21/scratchpad/codiesp/train_dev",
+  "out_dir": "/private/tmp/claude-501/-Users-leonardarnold-Documents-Stanford-HPC/b317d1ef-ba40-40d5-a2e6-4f62f074be21/scratchpad/sft",
+  "argument_sources": {
+    "data_root": "--data-root",
+    "out": "--out",
+    "tokenizer": "--tokenizer"
+  },
+  "upload_target": null,
+  "task": "CodiEsp task1 (DIAGNOSTICO) only; task2/task3 files present but ignored",
+  "seed": 0,
+  "tokenizer": {
+    "spec": "Qwen/Qwen3-0.6B",
+    "name_or_path": "Qwen/Qwen3-0.6B",
+    "class": "Qwen2TokenizerFast",
+    "is_fast": true,
+    "vocab_size": 151643,
+    "eos_token": "<|im_end|>",
+    "eos_token_id": 151645
+  },
+  "token_accounting": {
+    "training_text": "prompt + completion + tokenizer.eos_token",
+    "add_special_tokens": true,
+    "special_tokens_overhead_per_sequence": 0,
+    "eos_tokens_appended": 1,
+    "total_tokens": "prompt_tokens + completion_tokens + eos_tokens_appended - special_tokens_overhead_per_sequence (counted twice by encoding the prompt and the completion separately)",
+    "truncation_side": "right (the completion is lost first)"
+  },
+  "applies_to": {
+    "tokens_and_truncation": "the prompt/completion pair in these JSONL files, tokenised as prompt + completion + tokenizer.eos_token, right-truncated to seq_len",
+    "consumers": {
+      "src/train_qwen3_icd.py": "imports this module, reads <data_root>/<split>.jsonl (falling back to prepare_data.build_split on the raw bundle) and trains on prompt + completion + tokenizer.eos_token \u2014 the truncation table is valid for it only while that stays true",
+      "src/evaluate.py": "reads dev.jsonl (doc_id, text, codes; prompt on request)"
+    }
+  },
+  "prompt": {
+    "template": "You are a medical coder. Read the clinical case report below, which is written in Spanish, and list every ICD-10 diagnosis code that applies to it.\n\nAnswer format (follow it exactly):\n- output lowercase ICD-10 codes only, for example: a23.9, e04.9, r50.9\n- separate the codes with a comma and a space\n- sort the codes alphabetically\n- output nothing else: no explanations, no code descriptions, no translation of the case\n- if the case contains no codable diagnosis, output: none\n\n### Clinical case\n{case_text}\n\n### ICD-10 diagnosis codes\n",
+    "template_sha256": "a210ce6b8228f5531deb2cc7a62374d21b1e83e2aebc0a0358ae62ad08fdface",
+    "delimiter": "### ICD-10 diagnosis codes\n",
+    "completion_separator": ", ",
+    "empty_completion": "none",
+    "code_order": "lexicographic ascending, deduplicated, lowercase"
+  },
+  "seq_lens_evaluated": [
+    256,
+    512,
+    1024,
+    2048
+  ],
+  "splits": {
+    "train": {
+      "n_docs": 500,
+      "codes": {
+        "unique": 1788,
+        "total_assignments": 5683,
+        "per_doc_mean": 11.366,
+        "per_doc": {
+          "n": 500,
+          "min": 1.0,
+          "mean": 11.366,
+          "p50": 10.0,
+          "p90": 21.0,
+          "p99": 32.00999999999999,
+          "max": 41.0
+        }
+      },
+      "case_text_words": {
+        "n": 500,
+        "min": 73.0,
+        "mean": 349.018,
+        "p50": 314.5,
+        "p90": 576.1,
+        "p99": 789.3999999999996,
+        "max": 1172.0
+      },
+      "tokens": {
+        "case_text": {
+          "n": 500,
+          "min": 162.0,
+          "mean": 670.292,
+          "p50": 598.5,
+          "p90": 1132.8000000000004,
+          "p99": 1665.1,
+          "max": 2155.0
+        },
+        "prompt": {
+          "n": 500,
+          "min": 298.0,
+          "mean": 806.298,
+          "p50": 734.5,
+          "p90": 1268.8000000000004,
+          "p99": 1801.1,
+          "max": 2291.0
+        },
+        "completion": {
+          "n": 500,
+          "min": 5.0,
+          "mean": 68.956,
+          "p50": 59.0,
+          "p90": 132.10000000000002,
+          "p99": 197.0,
+          "max": 243.0
+        },
+        "total": {
+          "n": 500,
+          "min": 319.0,
+          "mean": 876.254,
+          "p50": 802.0,
+          "p90": 1379.1000000000004,
+          "p99": 1945.3299999999997,
+          "max": 2489.0
+        }
+      },
+      "truncation": [
+        {
+          "seq_len": 256,
+          "n_docs": 500,
+          "n_truncated": 500,
+          "frac_truncated": 1.0,
+          "n_completion_fully_lost": 500,
+          "frac_completion_fully_lost": 1.0,
+          "mean_kept_tokens": 256.0,
+          "mean_padding_fraction": 0.0
+        },
+        {
+          "seq_len": 512,
+          "n_docs": 500,
+          "n_truncated": 427,
+          "frac_truncated": 0.854,
+          "n_completion_fully_lost": 413,
+          "frac_completion_fully_lost": 0.826,
+          "mean_kept_tokens": 501.554,
+          "mean_padding_fraction": 0.02040234375000005
+        },
+        {
+          "seq_len": 1024,
+          "n_docs": 500,
+          "n_truncated": 136,
+          "frac_truncated": 0.272,
+          "n_completion_fully_lost": 105,
+          "frac_completion_fully_lost": 0.21,
+          "mean_kept_tokens": 788.452,
+          "mean_padding_fraction": 0.23002734375
+        },
+        {
+          "seq_len": 2048,
+          "n_docs": 500,
+          "n_truncated": 4,
+          "frac_truncated": 0.008,
+          "n_completion_fully_lost": 1,
+          "frac_completion_fully_lost": 0.002,
+          "mean_kept_tokens": 874.868,
+          "mean_padding_fraction": 0.572818359375
+        }
+      ],
+      "split_dir": "/private/tmp/claude-501/-Users-leonardarnold-Documents-Stanford-HPC/b317d1ef-ba40-40d5-a2e6-4f62f074be21/scratchpad/codiesp/train_dev/train",
+      "annotation_file": "train_annotations_task1_processed.tsv",
+      "n_text_files": 500,
+      "n_docs_skipped_no_annotations": 0,
+      "n_docs_skipped_empty_text": 0,
+      "annotation_rows": {
+        "total": 7524,
+        "kept": 7524,
+        "header_skipped": 0,
+        "dropped_too_few_fields": 0,
+        "dropped_wrong_task_label": 0,
+        "dropped_malformed_code": 0,
+        "carried_automatic_suggestion_suffix": 1
+      },
+      "order": "shuffled(seed=0)",
+      "limit_applied": null
+    },
+    "dev": {
+      "n_docs": 250,
+      "codes": {
+        "unique": 1164,
+        "total_assignments": 2689,
+        "per_doc_mean": 10.756,
+        "per_doc": {
+          "n": 250,
+          "min": 1.0,
+          "mean": 10.756,
+          "p50": 10.0,
+          "p90": 20.0,
+          "p99": 32.0,
+          "max": 33.0
+        }
+      },
+      "case_text_words": {
+        "n": 250,
+        "min": 69.0,
+        "mean": 352.296,
+        "p50": 327.5,
+        "p90": 570.3,
+        "p99": 876.0799999999999,
+        "max": 956.0
+      },
+      "tokens": {
+        "case_text": {
+          "n": 250,
+          "min": 131.0,
+          "mean": 673.884,
+          "p50": 623.5,
+          "p90": 1120.5,
+          "p99": 1629.7699999999998,
+          "max": 1698.0
+        },
+        "prompt": {
+          "n": 250,
+          "min": 267.0,
+          "mean": 809.892,
+          "p50": 759.5,
+          "p90": 1256.5,
+          "p99": 1765.7699999999998,
+          "max": 1834.0
+        },
+        "completion": {
+          "n": 250,
+          "min": 5.0,
+          "mean": 65.328,
+          "p50": 58.5,
+          "p90": 119.1,
+          "p99": 193.56999999999994,
+          "max": 201.0
+        },
+        "total": {
+          "n": 250,
+          "min": 287.0,
+          "mean": 876.22,
+          "p50": 820.0,
+          "p90": 1361.3,
+          "p99": 1897.1,
+          "max": 1971.0
+        }
+      },
+      "truncation": [
+        {
+          "seq_len": 256,
+          "n_docs": 250,
+          "n_truncated": 250,
+          "frac_truncated": 1.0,
+          "n_completion_fully_lost": 250,
+          "frac_completion_fully_lost": 1.0,
+          "mean_kept_tokens": 256.0,
+          "mean_padding_fraction": 0.0
+        },
+        {
+          "seq_len": 512,
+          "n_docs": 250,
+          "n_truncated": 215,
+          "frac_truncated": 0.86,
+          "n_completion_fully_lost": 205,
+          "frac_completion_fully_lost": 0.82,
+          "mean_kept_tokens": 501.944,
+          "mean_padding_fraction": 0.019640624999999967
+        },
+        {
+          "seq_len": 1024,
+          "n_docs": 250,
+          "n_truncated": 70,
+          "frac_truncated": 0.28,
+          "n_completion_fully_lost": 51,
+          "frac_completion_fully_lost": 0.204,
+          "mean_kept_tokens": 791.376,
+          "mean_padding_fraction": 0.22717187500000002
+        },
+        {
+          "seq_len": 2048,
+          "n_docs": 250,
+          "n_truncated": 0,
+          "frac_truncated": 0.0,
+          "n_completion_fully_lost": 0,
+          "frac_completion_fully_lost": 0.0,
+          "mean_kept_tokens": 876.22,
+          "mean_padding_fraction": 0.572158203125
+        }
+      ],
+      "split_dir": "/private/tmp/claude-501/-Users-leonardarnold-Documents-Stanford-HPC/b317d1ef-ba40-40d5-a2e6-4f62f074be21/scratchpad/codiesp/train_dev/dev",
+      "annotation_file": "dev_annotations_task1_processed.tsv",
+      "n_text_files": 250,
+      "n_docs_skipped_no_annotations": 0,
+      "n_docs_skipped_empty_text": 0,
+      "annotation_rows": {
+        "total": 3589,
+        "kept": 3588,
+        "header_skipped": 0,
+        "dropped_too_few_fields": 0,
+        "dropped_wrong_task_label": 0,
+        "dropped_malformed_code": 1,
+        "carried_automatic_suggestion_suffix": 0
+      },
+      "order": "sorted_by_doc_id",
+      "limit_applied": null
+    }
+  },
+  "code_coverage": {
+    "unique_per_split": {
+      "train": 1788,
+      "dev": 1164
+    },
+    "unique_union": 2221,
+    "dev_codes_unseen_in_train": 433,
+    "dev_frac_codes_unseen_in_train": 0.37199312714776633
+  },
+  "files": {
+    "train.jsonl": {
+      "path": "/private/tmp/claude-501/-Users-leonardarnold-Documents-Stanford-HPC/b317d1ef-ba40-40d5-a2e6-4f62f074be21/scratchpad/sft/train.jsonl",
+      "lines": 500,
+      "bytes": 2999909,
+      "sha256": "3aaebeccf6ec5d35959ea95bd45f7117a2eeb81110955c12d2a24f047dcb1140"
+    },
+    "dev.jsonl": {
+      "path": "/private/tmp/claude-501/-Users-leonardarnold-Documents-Stanford-HPC/b317d1ef-ba40-40d5-a2e6-4f62f074be21/scratchpad/sft/dev.jsonl",
+      "lines": 250,
+      "bytes": 1520266,
+      "sha256": "427d95a4772ec5a4b0247805972efa561da2fa38c7ded8c9dcec8bf9bb6c1bb1"
+    }
+  }
+}

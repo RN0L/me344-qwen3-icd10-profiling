@@ -497,7 +497,7 @@
         "data_prep": 23.61,
         "trainer_build": 0.95
       },
-      "other_s_composition_residual_s": 25.459499421999872,
+      "other_s_composition_residual_s": 25.45949942199988,
       "amortisation": {
         "fixed_s": 244.9942788990008,
         "marginal_s_per_step": 3.564989579999974,
@@ -677,7 +677,7 @@
           "steady_compute_s": 21.595158819053427,
           "checkpoint_write_s": 0.4203740173975163
         },
-        "unattributed_s": 5.684341886080802e-14,
+        "unattributed_s": 0.0,
         "sums_to_total": true,
         "detail": {
           "n_steps_recorded": 62,
@@ -697,7 +697,7 @@
         "data_prep": 27.29,
         "trainer_build": 0.93
       },
-      "other_s_composition_residual_s": 19.53699634899995,
+      "other_s_composition_residual_s": 19.536996348999963,
       "amortisation": {
         "fixed_s": 394.2031842580006,
         "marginal_s_per_step": 1.75122505249999,
@@ -803,7 +803,7 @@
         "data_prep": 40.32,
         "trainer_build": 1.04
       },
-      "other_s_composition_residual_s": 19.735397400000167,
+      "other_s_composition_residual_s": 19.73539740000018,
       "amortisation": {
         "fixed_s": 624.3295863149987,
         "marginal_s_per_step": 1.7511670740000227,
@@ -1616,14 +1616,6 @@
         "consequence": "Compute utilization is not comparable across all three backends: the CPU row carries host CPU percent and the GPU row carries a real nvidia-smi counter, but the TPU row has only HBM occupancy, which is a different quantity.",
         "explained_in": "JAX exposes device memory statistics but no core-utilization counter",
         "kind": "instrument limit"
-      },
-      {
-        "id": "no-dataset-stats",
-        "what": "docs/dataset_stats.json is not in the repository.",
-        "short": "dataset_stats.json absent \u2014 no truncation table for the seq sweep.",
-        "consequence": "The truncation table \u2014 which sequence length covers what fraction of the corpus \u2014 cannot be reported, so the sequence-length sweep is shown without the dataset coverage it should be read against.",
-        "explained_in": "src/prepare_data.py writes it; .gitignore expects it committed",
-        "kind": "missing artefact"
       }
     ]
   }

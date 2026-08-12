@@ -165,9 +165,16 @@ flags, one code path lowered by XLA to three backends.
 | Peak memory | 22.09 GB (66.1 % of 31 GiB) | 5.15 GB (**5.0 %** of 102.6 GB) | 1.23 GB (**7.3 %** of HBM) |
 | Mean utilisation | 44.3 % host CPU | **1.59 %** (max 48 %) | *no counter exists* |
 | Wall clock on compute | 48.9 % | 2.5 % | 2.5 % |
-| Compile time | 97.6 s | 76.0 s | 81.6 s |
+| Compile time † | 97.6 s | 76.0 s | 81.6 s |
 | Fixed cost per job | 238.1 s | **125.7 s** | 307.1 s |
 | Total wall clock | 466.0 s (12 steps) | 128.9 s (40 steps) | 315.1 s (100 steps) |
+
+† **Compile time here is not `phases.compile_s` from the records** (116.6 / 40.2 / 42.2 s). Those
+values omit the *second* compilation: the contract defines `steady_state_s` as `sum(steps[1:])`,
+and `steps[1]` is itself an XLA compile on every accelerator record — it costs 13×–496× the
+median step. `profiling/analyze.py` re-partitions, so the row above is compile excess plus
+recompile excess. Both quantities are kept side by side in `results/analysis.json` under
+`phases_contract.compile_s` and `breakdown.segments.compile_s`; neither replaces the other.
 
 **One GH200 matches an eight-chip v5e slice to within 0.23 %**, at 5.0 % memory occupancy
 against the TPU's 7.3 %. At batch 1 this workload occupies neither accelerator: it is
@@ -456,7 +463,15 @@ the records support.
 | `eval.micro_f1` null everywhere | **No model-quality figure is reported** | `src/evaluate.py` exists and was never run |
 | `image_pull_s` null on accelerators | Registry pull time is inside the wall clock without a name | `telemetry.merge_external_phases()` was not run |
 | No TPU utilization counter | Utilisation is comparable between CPU and GPU, but the TPU row is a different quantity | JAX exposes memory statistics, not core utilisation |
-| `docs/dataset_stats.json` absent | No truncation table; the sequence sweep lacks its dataset context | `src/prepare_data.py` writes it; it was not committed |
+| ~~`docs/dataset_stats.json` absent~~ — **closed** | The truncation table is now committed and the sequence sweep can be read against it | [`docs/dataset_stats.json`](docs/dataset_stats.json), regenerated from the corpus |
+
+`docs/dataset_stats.json` was regenerated on a second machine after the cluster became
+unreachable, which incidentally makes it a reproducibility check: the same `src/prepare_data.py`
+against the same Zenodo archive produced byte-identical counts — 500 train / 250 dev documents,
+p50 802 tokens, and the same truncation table to the decimal. It is the source for every
+coverage figure quoted in [Sweeps](#sweeps-and-the-failure-boundary), and it is what licenses
+the claim that **zero label loss needs `seq_len > 2291`**, well beyond any window benchmarked
+here.
 
 The single largest gap in an earlier draft of this report — no GPU record at all — is now
 closed, and the way it closed is itself worth recording: the blocker was believed to be a
