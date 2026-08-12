@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """Purpose-built figures for the slide deck, generated from the measured records.
 
-`profiling/make_dashboard.py` produces the report panels. This produces the two
-figures the *deck* needs, at slide proportions and with the projector in mind:
-larger type, fewer gridlines, one message each.
+`profiling/make_dashboard.py` produces the report panels. This produces the three
+figures the *deck* needs, at slide proportions and with the projector in mind.
+
+The rule that governs the type sizes below: a figure is authored at `figsize`
+inches and placed at `SLOT` inches on the slide, so every point size in it is
+scaled by `SLOT / figsize`. Authoring an 11 in figure into a 6.3 in slot turns
+11 pt labels into 6 pt, which is unreadable from the back of a room. Each figure
+here is authored close to the width it is placed at, so the scale factor stays
+above 0.85 and the smallest label lands at 10 pt or more on the slide.
 
     uv run --with matplotlib --with numpy python slides/make_slide_figures.py
 """
@@ -31,6 +37,8 @@ for f in sorted(RESULTS.glob("*.json")):
         d = json.loads(f.read_text())
         recs[d["run_id"]] = d
 
+stats = json.loads((REPO / "docs" / "dataset_stats.json").read_text())
+
 plt.rcParams.update({
     "font.size": 13, "axes.spines.top": False, "axes.spines.right": False,
     "axes.edgecolor": "#CBD5E1", "text.color": INK, "axes.labelcolor": INK,
@@ -39,55 +47,39 @@ plt.rcParams.update({
     "figure.facecolor": "white", "savefig.facecolor": "white",
 })
 
-# ---------------------------------------------------------------- slide 4 ----
-TRIO = [
-    ("CPU\n32-core", "cpu-x86-32c-0p6b-bs1-seq1024", GREY),
-    ("GPU\nGH200 · 1 chip", "gpu-gh200-0p6b-bs1-seq1024", ORANGE),
-    ("TPU\nv5e · 8 chips", "tpu-v5e8-bs1-seq1024-filecache-0p6b", TEAL),
-]
-labels = [t[0] for t in TRIO]
-steps = [recs[t[1]]["steady"]["median_step_s"] for t in TRIO]
-mem = [recs[t[1]]["memory"]["peak_pct"] for t in TRIO]
-colors = [t[2] for t in TRIO]
-speed = [steps[0] / s for s in steps]
 
-fig, (a1, a2) = plt.subplots(1, 2, figsize=(12.0, 4.1),
-                             gridspec_kw={"width_ratios": [1.15, 1], "wspace": 0.30})
+# ------------------------------------------------- slide 1: what the data costs
+# Placed at 6.20 in, authored at 6.60 in -> scale 0.94.
+trunc = {e["seq_len"]: e for e in stats["splits"]["train"]["truncation"]}
+windows = [512, 1024, 2048]
+kept = [100 * (1 - trunc[w]["frac_truncated"]) for w in windows]
 
-b = a1.bar(labels, speed, color=colors, width=0.6)
-a1.set_yscale("log")
-a1.set_ylabel("speedup vs CPU  (log)")
-a1.set_title("Speedup vs CPU", loc="left", fontweight="bold", fontsize=15, pad=14)
-for rect, v, s in zip(b, speed, steps):
-    a1.text(rect.get_x() + rect.get_width()/2, v * 1.18, f"{v:.0f}×",
-            ha="center", fontweight="bold", fontsize=15, color=INK)
-    inside = max(v * 0.42, 0.62)          # never below the axis floor (ylim starts at 0.5)
-    a1.text(rect.get_x() + rect.get_width()/2, inside,
-            f"{s*1000:.0f} ms" if s < 1 else f"{s:.1f} s",
-            ha="center", fontsize=12, color="white", fontweight="bold")
-a1.set_ylim(0.5, max(speed) * 3)
-
-b2 = a2.bar(labels, mem, color=colors, width=0.6)
-a2.set_ylabel("peak memory  (% of capacity)")
-a2.set_ylim(0, 100)
-a2.set_title("Peak memory occupancy", loc="left", fontweight="bold", fontsize=15, pad=14)
-for rect, v in zip(b2, mem):
-    a2.text(rect.get_x() + rect.get_width()/2, v + 3.5, f"{v:.1f} %",
-            ha="center", fontweight="bold", fontsize=14, color=INK)
-a2.axhspan(0, 10, color="#FEF3EA", zorder=0)
-a2.annotate("both accelerators below 10 %\nnothing to parallelise",
-            xy=(1.0, 5.0), xytext=(-0.35, 36), fontsize=10.5, color=ORANGE,
-            style="italic", ha="left",
-            arrowprops=dict(arrowstyle="->", color=ORANGE, lw=1.4,
-                            connectionstyle="arc3,rad=-0.25"))
-
-fig.suptitle("One Hopper chip keeps pace with eight TPU chips, because neither is busy",
-             fontsize=16, fontweight="bold", x=0.008, ha="left", y=1.045)
+fig, ax = plt.subplots(figsize=(6.6, 2.05))
+y = np.arange(len(windows))
+cols = [ORANGE if w == 1024 else "#CBD5E1" for w in windows]
+bars = ax.barh(y, kept, color=cols, height=0.62)
+for rect, v, w in zip(bars, kept, windows):
+    ax.text(v + 2.2, rect.get_y() + rect.get_height() / 2, f"{v:.0f} %",
+            va="center", fontsize=13, fontweight="bold",
+            color=ORANGE if w == 1024 else INK)
+ax.set_yticks(y)
+ax.set_yticklabels([f"{w} tok" for w in windows], fontsize=13)
+ax.invert_yaxis()
+ax.set_xlim(0, 118)
+ax.set_xticks([0, 50, 100])
+ax.set_xticklabels(["0", "50", "100 %"], fontsize=11)
+ax.set_title("Share of cases that fit the context window, uncut",
+             loc="left", fontweight="bold", fontsize=13.5, pad=9)
+ax.text(3.0, 1.0, "we benchmark here", fontsize=12, color="white",
+        style="italic", va="center", fontweight="bold")
+ax.grid(axis="y", visible=False)
 plt.tight_layout()
-fig.savefig(OUT / "slide4-comparison.png", dpi=200, bbox_inches="tight")
+fig.savefig(OUT / "slide1-coverage.png", dpi=200, bbox_inches="tight")
 plt.close(fig)
 
-# ---------------------------------------------------------------- slide 3 ----
+
+# ----------------------------------------- slide 3: where the wall clock went
+# Placed at 6.30 in, authored at 7.00 in -> scale 0.90.
 base = recs["tpu-v5e8-bs8-seq1024"]
 p = base["phases"]
 order = ["submit_to_running_s", "model_load_s", "compile_s",
@@ -95,64 +87,82 @@ order = ["submit_to_running_s", "model_load_s", "compile_s",
 name = {"submit_to_running_s": "scheduling", "model_load_s": "checkpoint load",
         "compile_s": "XLA compile", "steady_state_s": "steady-state steps",
         "checkpoint_write_s": "ckpt write", "other_s": "other"}
-col = {"steady_state_s": ORANGE}
 total = p["total_wall_s"]
 
-fig, ax = plt.subplots(figsize=(11.0, 2.5))
+fig, ax = plt.subplots(figsize=(7.0, 2.35))
 left = 0.0
 for k in order:
     v = p.get(k) or 0.0
     if v <= 0:
         continue
-    c = col.get(k, "#CBD5E1" if k != "compile_s" else "#94A3B8")
-    ax.barh(0, v, left=left, color=c, edgecolor="white", linewidth=1.6, height=0.55)
-    if v / total > 0.07:
-        ax.text(left + v/2, 0, f"{name[k]}\n{100*v/total:.0f} %", ha="center", va="center",
-                fontsize=11, fontweight="bold",
-                color="white" if k == "steady_state_s" else INK)
+    on = k == "steady_state_s"
+    c = ORANGE if on else ("#94A3B8" if k == "compile_s" else "#CBD5E1")
+    ax.barh(0, v, left=left, color=c, edgecolor="white", linewidth=1.8, height=0.5)
+    # Percentage inside the segment, name outside it. Wide segments take the name
+    # below; the one narrow segment takes it above, so no two labels can collide
+    # and nothing has to be squeezed into 70 px.
+    share = 100 * v / total
+    if share >= 3:
+        ax.text(left + v / 2, 0, f"{share:.0f} %", ha="center", va="center",
+                fontsize=13, fontweight="bold", color="white" if on else INK)
+        above = share < 12
+        ax.text(left + v / 2, 0.40 if above else -0.42, name[k], ha="center",
+                va="bottom" if above else "top",
+                fontsize=11.5, color=ORANGE if on else "#475569",
+                fontweight="bold" if on else "normal")
     left += v
-ax.set_xlim(0, total); ax.set_ylim(-0.6, 0.6); ax.set_yticks([])
-ax.set_xlabel("seconds of wall clock")
-ax.set_title(f"Only {100*p['steady_state_s']/total:.0f} % of {total:.0f} s is arithmetic",
-             loc="left", fontweight="bold", fontsize=15, pad=10)
+ax.set_xlim(0, total)
+ax.set_ylim(-1.0, 0.95)
+ax.set_yticks([])
+ax.set_xlabel("seconds of wall clock", fontsize=11.5)
+ax.set_title(f"Only {100 * p['steady_state_s'] / total:.0f} % of {total:.0f} s is arithmetic",
+             loc="left", fontweight="bold", fontsize=14.5, pad=10)
 ax.grid(False)
 plt.tight_layout()
 fig.savefig(OUT / "slide3-walltime.png", dpi=200, bbox_inches="tight")
 plt.close(fig)
 
-print(f"wrote {OUT.relative_to(REPO)}/slide4-comparison.png and slide3-walltime.png")
 
-
-# ---------------------------------------------------------------- slide 4 sweep
+# ------------------------------------- slide 4: the tie breaks under real load
+# Placed at 7.50 in, authored at 8.20 in -> scale 0.91.
 g4 = {r["config"]["batch_size"]: r for r in recs.values()
       if r["backend"] == "gpu" and r["config"]["model"].endswith("4B")}
 t4 = {r["config"]["batch_size"]: r for r in recs.values()
       if r["backend"] == "tpu" and r["config"]["model"].endswith("4B")
       and r["config"]["seq_len"] == 1024}
 
-fig, ax = plt.subplots(figsize=(9.5, 2.6))
+fig, ax = plt.subplots(figsize=(8.2, 2.45))
 bs = [8, 16, 32]
-gv = [g4[b]["steady"]["tokens_per_s"] if g4.get(b) and g4[b]["status"] == "ok" else None for b in bs]
-tv = [t4[b]["steady"]["tokens_per_s"] if t4.get(b) and t4[b]["status"] == "ok" else None for b in bs]
+gv = [g4[b]["steady"]["tokens_per_s"] if g4.get(b) and g4[b]["status"] == "ok" else None
+      for b in bs]
+tv = [t4[b]["steady"]["tokens_per_s"] if t4.get(b) and t4[b]["status"] == "ok" else None
+      for b in bs]
 x = np.arange(len(bs))
-ax.plot(x, gv, "o-", color=ORANGE, lw=3, ms=10, label="GH200, 1 chip")
+ax.plot(x, gv, "o-", color=ORANGE, lw=3.2, ms=11, label="GH200, 1 chip")
 ax.plot([i for i, v in zip(x, tv) if v], [v for v in tv if v], "s-", color=TEAL,
-        lw=3, ms=10, label="v5e, 8 chips")
+        lw=3.2, ms=11, label="v5e, 8 chips")
 for i, v in enumerate(gv):
-    if v: ax.annotate(f"{v:,.0f}", (i, v), textcoords="offset points", xytext=(0, 11),
-                      ha="center", fontsize=11, fontweight="bold", color=ORANGE)
+    if v:
+        ax.annotate(f"{v:,.0f}", (i, v), textcoords="offset points", xytext=(0, 12),
+                    ha="center", fontsize=12.5, fontweight="bold", color=ORANGE)
 for i, v in enumerate(tv):
-    if v: ax.annotate(f"{v:,.0f}", (i, v), textcoords="offset points", xytext=(0, -20),
-                      ha="center", fontsize=11, fontweight="bold", color=TEAL)
-ax.annotate("v5e out of memory", (2, 4600), xytext=(1.45, 7600), fontsize=11,
+    if v:
+        ax.annotate(f"{v:,.0f}", (i, v), textcoords="offset points", xytext=(0, -22),
+                    ha="center", fontsize=12.5, fontweight="bold", color=TEAL)
+ax.annotate("v5e out of memory", (2, 4620), xytext=(1.38, 7900), fontsize=12,
             color=TEAL, style="italic",
-            arrowprops=dict(arrowstyle="->", color=TEAL, lw=1.4))
-ax.set_xticks(x); ax.set_xticklabels([f"batch {b}" for b in bs])
-ax.set_ylabel("tokens / s"); ax.set_ylim(2500, 15500)
-ax.legend(frameon=False, loc="center left", fontsize=11)
-ax.set_title("Qwen3-4B: the Hopper keeps scaling, the slice is saturated at batch 8",
-             loc="left", fontweight="bold", fontsize=13, pad=10)
+            arrowprops=dict(arrowstyle="->", color=TEAL, lw=1.5))
+ax.set_xticks(x)
+ax.set_xticklabels([f"batch {b}" for b in bs], fontsize=12.5)
+ax.set_xlim(-0.28, 2.28)
+ax.set_ylabel("tokens / s", fontsize=12)
+ax.set_ylim(2500, 15800)
+ax.legend(frameon=False, loc="center left", fontsize=12)
+ax.set_title("Qwen3-4B: the Hopper keeps scaling, the slice saturates at batch 8",
+             loc="left", fontweight="bold", fontsize=13.5, pad=10)
 plt.tight_layout()
 fig.savefig(OUT / "slide4-sweep.png", dpi=200, bbox_inches="tight")
 plt.close(fig)
-print("wrote slide4-sweep.png")
+
+for f in ("slide1-coverage", "slide3-walltime", "slide4-sweep"):
+    print(f"wrote {(OUT / (f + '.png')).relative_to(REPO)}")

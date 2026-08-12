@@ -322,8 +322,16 @@ Rates and sources are constants at the top of `profiling/analyze.py`, retrieved
 | CPU 32-core, Qwen3-0.6B | $6.05 *(proxy)* | $5.91 |
 | GPU GH200, Qwen3-0.6B | **$0.13** *(proxy)* | **$0.12** |
 | TPU v5e-8, Qwen3-0.6B | $1.03 | $0.64 |
+| GPU GH200, 4B, bs 8 | **$0.56** *(proxy)* | **$0.07** |
+| GPU GH200, 4B, bs 16 | $0.94 *(proxy)* | $0.06 |
+| GPU GH200, 4B, bs 32 | $1.69 *(proxy)* | $0.05 |
 | TPU v5e-8, 4B, bs 16 | $10.16 | $0.62 |
 | TPU v5e-8, 4B, bs 8 | $5.72 | $0.66 |
+
+The two 4B rows at batch 8 are the pair quoted on slide 5: **$0.56 against $5.72 per 1000
+steps, a 10.3× gap**, at the one operating point where both accelerators were measured on the
+same model, the same sequence length and the same batch. It is the like-for-like cost
+comparison this project can actually support, and it is the one the deck states.
 
 Three conclusions, each with the price sensitivity that supports it:
 
