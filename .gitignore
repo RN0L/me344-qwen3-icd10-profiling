@@ -55,3 +55,6 @@ Thumbs.db
 
 # Generated on the node by docker/build.sh — machine-specific, never committed.
 docker/images.env
+
+# Notebook checkpoints
+.ipynb_checkpoints/

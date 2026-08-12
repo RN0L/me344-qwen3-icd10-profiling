@@ -81,6 +81,26 @@ report is typed by hand.*
 
 ---
 
+## Tooling matrix
+
+The brief asks for at least three elements of the AI infrastructure stack. All four
+categories are exercised, and each one earned its place by changing a measurement.
+
+| Category | What we used | Where it shows up in the results |
+|---|---|---|
+| **Compute targets** | 32-core x86_64 CPU · NVIDIA GH200 480 GB · TPU v5e 2×4 (8 chips) | The three-way comparison; the CPU is also the row that proves a 4B fine-tune does not fit in 31 GiB |
+| **Orchestration** | Docker (3 pinned images) · Kubernetes Jobs on two clusters · Kueue admission · ConfigMap-mounted source | `submit_to_running_s` is a measured phase, not an estimate — 114–167 s of Kueue admission plus node boot plus image pull |
+| **Compilation layer** | JAX / XLA — one program lowered to CPU, CUDA and TPU · LoRA via qwix · Tunix trainer | `compile_s` is its own phase. XLA compiles the same graph in 70.7 s on TPU and refuses to finish in 64 min on CPU |
+| **Telemetry** | `src/telemetry.py` against a fixed schema · `nvidia-smi` sampling · `jax.local_devices().memory_stats()` · `psutil` | Every figure in this report; the schema's `notes` field is what caught a physically impossible measurement before it reached a chart |
+
+Weights & Biases is wired into the training script and gated on `WANDB_API_KEY`
+(`optional: true` in the manifests), so it starts without the secret and skips logging.
+It was left off deliberately: the phase decomposition this project needs is finer-grained
+than a W&B step curve, and adding a second source of truth would have invited the two to
+disagree.
+
+---
+
 ## System Topology Diagram
 
 Three planes, one code path, and one authorization boundary that removed a column from the
