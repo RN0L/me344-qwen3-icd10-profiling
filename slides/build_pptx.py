@@ -65,6 +65,21 @@ compute_pct = bp["steady_state_s"] / bp["total_wall_s"] * 100
 load_x = bp["model_load_s"] / mp["model_load_s"]
 wall_cut = (1 - mp["total_wall_s"] / bp["total_wall_s"]) * 100
 
+# The 4B sweep: the comparison at an operating point where both chips are busy.
+g4 = {r["config"]["batch_size"]: r for r in recs.values()
+      if r["backend"] == "gpu" and r["config"]["model"].endswith("4B")}
+t4 = {r["config"]["batch_size"]: r for r in recs.values()
+      if r["backend"] == "tpu" and r["config"]["model"].endswith("4B")
+      and r["config"]["seq_len"] == 1024}
+g8, t8 = g4[8]["steady"]["tokens_per_s"], t4[8]["steady"]["tokens_per_s"]
+g16, t16 = g4[16]["steady"]["tokens_per_s"], t4[16]["steady"]["tokens_per_s"]
+g32 = g4[32]["steady"]["tokens_per_s"]
+load_ratio = g16 / t16
+_c = {c["run_id"]: c["usd_per_1000_steps"] for c in load("analysis")["cost"]["per_run"]}
+k4_gpu = _c["gpu-gh200-bs8-seq1024"]
+k4_tpu = _c["tpu-v5e8-bs8-seq1024-filecache"]
+cost_ratio_4b = k4_tpu / k4_gpu
+
 cost = {c["run_id"]: c for c in load("analysis")["cost"]["per_run"]}
 k_cpu = cost[cpu["run_id"]]["usd_per_1000_steps"]
 k_gpu = cost[gpu["run_id"]]["usd_per_1000_steps"]
@@ -180,37 +195,30 @@ def notes(s, t):
 # ============================== 1. Problem ====================================
 s = slide(1, "The problem", "Can a clinic afford to run its own coding model?")
 
-panel(s, Inches(0.62), Inches(1.85), Inches(6.0), Inches(2.35))
-txt(s, Inches(0.92), Inches(2.08), Inches(5.5), Inches(0.35),
-    "Dr. Findus, our startup in Berlin", 14, bold=True)
-txt(s, Inches(0.92), Inches(2.5), Inches(5.5), Inches(1.6),
-    "German GPs must code every consultation.\n"
-    "We read the note and propose the codes;\n"
-    "the physician confirms each one. A legal\n"
-    "requirement here. Reliability is the product:\n"
-    "over-coding is fraud exposure, not error.", 13, gap=3)
+panel(s, Inches(0.62), Inches(1.8), Inches(5.9), Inches(2.3))
+txt(s, Inches(0.95), Inches(2.05), Inches(5.3), Inches(0.35),
+    "Dr. Findus, our startup in Berlin", 15, bold=True)
+txt(s, Inches(0.95), Inches(2.52), Inches(5.3), Inches(1.5),
+    "German GPs code every consultation.\n"
+    "We propose, the physician confirms.\n"
+    "Reliability is the product.\n"
+    "Today it runs on hosted APIs.", 14, gap=6)
 
-txt(s, Inches(7.0), Inches(1.95), Inches(5.7), Inches(0.8),
-    "Today that runs on hosted APIs.\nCould it run on our own hardware?", 16, bold=True, gap=2)
-txt(s, Inches(7.0), Inches(2.85), Inches(5.7), Inches(1.4),
-    "An infrastructure question, not a model one.\n"
-    "so we built the workload and measured it.\n\n"
-    "Qwen3 + LoRA on CodiEsp: 1 000 clinical case\n"
-    "reports, ICD-10 labelled, CC-BY 4.0.", 13, color=GREY, gap=3)
+txt(s, Inches(7.0), Inches(2.05), Inches(5.7), Inches(1.0),
+    "Could it run on\nour own hardware?", 24, bold=True, color=ORANGE, gap=2)
+txt(s, Inches(7.0), Inches(3.35), Inches(5.7), Inches(0.8),
+    "Qwen3 + LoRA on CodiEsp.\n1 000 clinical case reports, ICD-10, CC-BY 4.0.",
+    13, color=GREY, gap=3)
 
-stat(s, Inches(0.62), Inches(4.55), Inches(3.0), "8 GB",
-     "of weights at 4B, before a single\nactivation exists")
-stat(s, Inches(4.0), Inches(4.55), Inches(3.0), "2 489",
-     "tokens in the longest case.\nSequence length is not free")
-stat(s, Inches(7.4), Inches(4.55), Inches(5.3), "3 backends",
-     "CPU · GPU · TPU, one JAX program,\nno per-backend reimplementation")
+txt(s, Inches(0.62), Inches(4.55), Inches(12.0), Inches(0.35),
+    "The resource problem", 14, bold=True, color=ORANGE)
+txt(s, Inches(0.62), Inches(4.95), Inches(12.0), Inches(1.1),
+    "8 GB of weights at 4B before a single activation.  Cases up to 2 489 tokens.\n"
+    "One JAX program, lowered by XLA to CPU, GPU and TPU.", 17, gap=8)
 
-txt(s, Inches(0.62), Inches(6.35), Inches(12.0), Inches(0.7),
-    "Where does the time actually go, and what does it take to run this at all?",
-    19, bold=True, color=ORANGE)
-txt(s, Inches(0.62), Inches(6.85), Inches(12.0), Inches(0.4),
-    "No patient data was used. Model accuracy earns no marks here. The object of study is the infrastructure.",
-    11, color=GREY, italic=True)
+txt(s, Inches(0.62), Inches(6.45), Inches(12.0), Inches(0.7),
+    "Where does the time go, and what does it take to run this at all?",
+    22, bold=True)
 
 notes(s, """
 LEONARD  (~50 s)
@@ -241,19 +249,19 @@ s = slide(2, "Approach", "One program. Three backends. All measured.")
 
 cols = [
     ("Compilation", ORANGE,
-     "One JAX / Flax program.\nXLA lowers it to CPU, CUDA\nand TPU.\nLoRA via qwix, training via\nTunix, no per-backend\nreimplementation."),
+     "One JAX program\nXLA lowers it to all three\nLoRA via qwix, Tunix trainer"),
     ("Orchestration", ORANGE,
-     "3 pinned Docker images.\nKubernetes Jobs across two\nclusters.\nKueue admission on the TPU\npool. Every manifest states\nits CPU, memory and chips."),
+     "3 pinned Docker images\nKubernetes across 2 clusters\nKueue admission, explicit limits"),
     ("Storage", ORANGE,
-     "gcsfuse CSI, implicit-dirs.\nAn 8 GB checkpoint read\nfrom a bucket.\nThe file cache was left as a\nknob rather than fixed -\nthat knob became the\nexperiment."),
+     "gcsfuse CSI, implicit-dirs\n8 GB checkpoint from a bucket\nFile cache left as a knob"),
 ]
 for i, (head, col, body) in enumerate(cols):
     x = Inches(0.62 + i * 4.15)
-    panel(s, x, Inches(1.95), Inches(3.85), Inches(2.5))
+    panel(s, x, Inches(1.95), Inches(3.85), Inches(1.85))
     txt(s, x + Inches(0.28), Inches(2.15), Inches(3.3), Inches(0.4), head, 16, bold=True, color=col)
-    txt(s, x + Inches(0.28), Inches(2.58), Inches(3.35), Inches(1.8), body, 12, gap=2)
+    txt(s, x + Inches(0.28), Inches(2.6), Inches(3.4), Inches(1.2), body, 13, gap=7)
 
-table(s, Inches(0.62), Inches(4.75), [
+table(s, Inches(0.62), Inches(4.35), [
     ["Backend", "Hardware", "Host arch", "How the code got there"],
     ["CPU", "32-core x86_64, 31 GiB", "x86_64", "bare node"],
     ["GPU", "NVIDIA GH200 480 GB", "ARM64 Grace", "public image + ConfigMap"],
@@ -261,9 +269,9 @@ table(s, Inches(0.62), Inches(4.75), [
 ], [Inches(1.5), Inches(4.1), Inches(2.4), Inches(4.1)], size=12.5,
     right_align_from=99)
 
-txt(s, Inches(0.62), Inches(6.55), Inches(12.0), Inches(0.6),
-    "Note the middle row: the GH200's host is ARM64, not x86. That single fact cost us five separate blockers.",
-    13, color=GREY, italic=True)
+txt(s, Inches(0.62), Inches(6.15), Inches(12.0), Inches(0.5),
+    "The GH200 host is ARM64. That one fact cost five separate blockers.",
+    15, bold=True, color=ORANGE)
 
 notes(s, """
 LEONARD  (~50 s)
@@ -291,17 +299,11 @@ to it at the end."
 # ============================== 3. Measurements ================================
 s = slide(3, "Measurements", "We did not time the job. We took it apart.")
 
-txt(s, Inches(0.62), Inches(1.95), Inches(5.3), Inches(2.6),
-    "Every run takes its own wall clock apart\n"
-    "into six phases: scheduling, image pull,\n"
-    "checkpoint load, XLA compile, the steady-\n"
-    "state steps, checkpoint write.\n\n"
-    "Batch and sequence sweeps walked until\n"
-    "the job dies. A failed cell is recorded,\n"
-    "never dropped. The boundary is the\n"
-    "measurement.\n\n"
-    "One schema, one JSON per run. Every figure\n"
-    "here reads those files and nothing else.", 13, gap=3)
+txt(s, Inches(0.62), Inches(2.05), Inches(5.4), Inches(2.4),
+    "Six phases per run, not one total\n"
+    "Sweeps walked into OOM, failed cells kept\n"
+    "One schema, one JSON per run\n"
+    "Every figure reads only those files", 16, gap=18)
 
 fig(s, "slide3-walltime.png", Inches(6.4), Inches(2.0), Inches(6.3))
 
@@ -310,10 +312,10 @@ panel(s, Inches(6.4), Inches(3.85), Inches(6.3), Inches(2.35),
 txt(s, Inches(6.72), Inches(4.08), Inches(5.7), Inches(0.35),
     "The schema caught a lie", 15, bold=True, color=RGBColor(0xDC, 0x26, 0x26))
 txt(s, Inches(6.72), Inches(4.5), Inches(5.7), Inches(1.6),
-    "One run reported 93 µs per step and 11 M tokens/s.\n"
-    "Impossible, yet it carried status \"ok\".\n"
-    "Its own notes flagged that it may have timed\n"
-    "dispatch, not completion. Discarded, repeated.", 12, gap=2)
+    "93 µs per step. 11 M tokens/s. Impossible,\n"
+    "yet it carried status \"ok\".\n\n"
+    "Its own notes admitted it may have timed\n"
+    "dispatch, not completion. Discarded.", 13, gap=4)
 
 notes(s, """
 LUIS  (~55 s)
@@ -340,61 +342,65 @@ that field, that number would have gone straight into a bar chart."
 """)
 
 # ============================== 4. Results ====================================
-s = slide(4, "Results", "One Hopper chip kept up with eight TPU chips.")
+s = slide(4, "Results", "Under load, one GH200 beats eight TPU chips.")
 
-table(s, Inches(0.62), Inches(1.82), [
-    ["Qwen3-0.6B · bs 1 · seq 1024", "CPU", "GPU GH200", "TPU v5e 2×4"],
-    ["chips", "-", "1", "8"],
-    ["median step", f"{c_s:.2f} s", f"{g_s:.4f} s", f"{t_s:.4f} s"],
-    ["throughput", f"{cpu['steady']['tokens_per_s']:,.0f}", f"{gpu['steady']['tokens_per_s']:,.0f}",
-     f"{tpu['steady']['tokens_per_s']:,.0f}"],
-    ["speedup vs CPU", "1.0×", f"{sp_g:.0f}×", f"{sp_t:.0f}×"],
-    ["peak memory", f"{cpu['memory']['peak_pct']:.0f} %",
-     f"{gpu['memory']['peak_pct']:.1f} %", f"{tpu['memory']['peak_pct']:.1f} %"],
-    ["USD / 1 000 steps", f"${k_cpu:.2f}", f"${k_gpu:.3f}", f"${k_tpu:.2f}"],
-], [Inches(2.6), Inches(1.45), Inches(1.6), Inches(1.6)], size=12,
-    rh=Inches(0.33), highlight=2)
+table(s, Inches(0.62), Inches(1.85), [
+    ["Qwen3-4B, seq 1024", "GH200  1 chip", "v5e  8 chips", "ratio"],
+    ["batch 8", f"{g8:,.0f} tok/s", f"{t8:,.0f} tok/s", f"{g8/t8:.1f}x"],
+    ["batch 16", f"{g16:,.0f} tok/s", f"{t16:,.0f} tok/s", f"{g16/t16:.1f}x"],
+    ["batch 32", f"{g32:,.0f} tok/s", "out of memory", ""],
+    ["batch 64", "out of memory", "", ""],
+], [Inches(2.5), Inches(2.0), Inches(2.0), Inches(1.2)], size=13,
+    rh=Inches(0.42), highlight=1)
 
-stat(s, Inches(8.7), Inches(1.85), Inches(4.0), f"{gt:.2f} %",
-     "difference in step time between\none GH200 and eight v5e chips", big=40)
-stat(s, Inches(8.7), Inches(3.15), Inches(4.0), f"{load_x:.1f}×",
-     f"faster checkpoint load from one\nmanifest line, {wall_cut:.0f} % off wall clock", big=40)
-fig(s, "slide4-comparison.png", Inches(0.62), Inches(4.28), Inches(7.4))
+txt(s, Inches(0.62), Inches(4.15), Inches(7.5), Inches(0.75),
+    f"At batch 1 both chips idle and tie to within {gt:.2f} %. That tie was an artefact.",
+    15, bold=True, gap=3)
 
-panel(s, Inches(8.7), Inches(4.55), Inches(4.0), Inches(2.2))
-txt(s, Inches(9.0), Inches(4.75), Inches(3.5), Inches(0.3),
-    "The control", 13, bold=True, color=ORANGE)
-txt(s, Inches(9.0), Inches(5.12), Inches(3.5), Inches(1.6),
-    "Median step time before and\nafter the cache:\n\n"
-    "1.75122 s  to  1.75117 s\n\n"
-    "The computation did not move.\nOnly I/O did, so the saving is\nattributable, not noise.", 11.5, gap=2)
+fig(s, "slide4-sweep.png", Inches(0.62), Inches(4.95), Inches(7.5))
+
+stat(s, Inches(8.7), Inches(1.85), Inches(4.0), f"{load_ratio:.1f}x",
+     "the throughput of an eight-chip v5e\nslice, from a single Hopper chip", big=52)
+
+panel(s, Inches(8.7), Inches(3.6), Inches(4.0), Inches(1.5))
+txt(s, Inches(9.0), Inches(3.8), Inches(3.5), Inches(0.3),
+    "Memory boundary", 14, bold=True, color=ORANGE)
+txt(s, Inches(9.0), Inches(4.15), Inches(3.5), Inches(0.9),
+    "GH200 fails between 32 and 64\nv5e fails between 16 and 32", 14, gap=4)
+
+panel(s, Inches(8.7), Inches(5.3), Inches(4.0), Inches(1.55))
+txt(s, Inches(9.0), Inches(5.5), Inches(3.5), Inches(0.3),
+    "The mitigation, controlled", 14, bold=True, color=ORANGE)
+txt(s, Inches(9.0), Inches(5.85), Inches(3.5), Inches(1.0),
+    f"File cache: load {load_x:.1f}x faster,\n{wall_cut:.0f} % off wall clock.\n"
+    "Step time unchanged to the\nfourth decimal.", 13, gap=3)
 
 notes(s, """
 LUIS  (~85 s, the slide to spend time on)
 
-"Same model, same batch, same sequence length, same script. The only thing that
-changes across these columns is the silicon.
+"This is the comparison at the model size the project is actually about, four
+billion parameters, and at batch sizes where both chips have work to do.
 
-The headline is the two accelerator columns. One GH200 matches an eight-chip TPU
-slice to within a quarter of a percent. Not eight times slower, the same.
+One GH200 delivers roughly two and a half times the throughput of an eight-chip
+v5e slice. Not per chip. In total.
 
-But read the memory row before you conclude anything about TPUs. At batch one the
-job uses five percent of the GPU and seven percent of the TPU. Neither accelerator
-is busy. The workload is latency-bound, so the extra seven chips have nothing to
-do. This is a statement about our operating point, not about the v5e being slow.
+Now, we first measured this at batch one, and there the two tied to within a
+quarter of a percent. That looked like a headline. It was an artefact: at batch
+one neither accelerator is occupied, so what we were comparing was launch
+latency, not compute. Sweeping until they broke is what exposed it.
 
-Then the result I am proudest of, on the right. We identified checkpoint load as
-the largest single phase, enabled the gcsfuse file cache, one line in the
-manifest, and re-ran. Load dropped fourteen and a half times. Total wall clock
-fell by thirty-one percent.
+Look at how the two behave as the batch grows. The Hopper climbs from eleven and
+a half to thirteen thousand tokens a second. The slice is flat around four and a
+half thousand, which means it saturated at batch eight and the extra work bought
+nothing. It also runs out of memory a step earlier than the GPU does.
 
-And the control is what makes it conclusive: median step time went from 1.75122
-seconds to 1.75117. Identical to the fourth decimal. The computation did not
-change at all. Only I/O moved, which is why we can attribute the saving to the
-cache rather than to noise. That is the difference between measuring and
-demonstrating."
+The bottom right is the other result. We identified checkpoint load as the
+largest phase, enabled the gcsfuse file cache, and re-ran. Load got fourteen and
+a half times faster and total wall clock fell by thirty-one percent. The control
+is that median step time stayed identical to the fourth decimal, so nothing
+about the computation changed. Only I/O moved."
 
-→ hand back to Leonard.
+Hand back to Leonard.
 """)
 
 # ============================== 5. Conclusion =================================
@@ -417,7 +423,8 @@ findings = [
 for i, (big, cap, body) in enumerate(findings):
     x = Inches(0.62 + i * 4.15)
     panel(s, x, Inches(1.9), Inches(3.85), Inches(2.65))
-    txt(s, x + Inches(0.28), Inches(2.05), Inches(3.3), Inches(0.7), big, 34, bold=True, color=ORANGE, gap=0)
+    txt(s, x + Inches(0.28), Inches(2.05), Inches(3.3), Inches(0.7), big,
+        34 if i == 0 else 26, bold=True, color=ORANGE if i == 0 else INK, gap=0)
     txt(s, x + Inches(0.28), Inches(2.68), Inches(3.35), Inches(0.45), cap, 12, bold=True, gap=2)
     txt(s, x + Inches(0.28), Inches(3.15), Inches(3.35), Inches(1.3), body, 11.5, color=GREY, gap=2)
 
@@ -430,18 +437,19 @@ txt(s, Inches(0.62), Inches(5.18), Inches(5.9), Inches(1.4),
     "a pod per job, file cache on anything reading a\n"
     "checkpoint.", 13, gap=2)
 
-panel(s, Inches(6.8), Inches(4.72), Inches(5.9), Inches(1.85))
-txt(s, Inches(7.1), Inches(4.9), Inches(5.4), Inches(0.35),
+panel(s, Inches(6.8), Inches(4.66), Inches(5.9), Inches(2.05))
+txt(s, Inches(7.1), Inches(4.84), Inches(5.4), Inches(0.35),
     "What this means for Dr. Findus", 15, bold=True, color=ORANGE)
-txt(s, Inches(7.1), Inches(5.28), Inches(5.4), Inches(1.2),
-    f"At ${k_gpu:.3f} per 1 000 steps on one GH200,\n"
-    f"{k_tpu / k_gpu:.0f}× cheaper than eight TPU chips at the same\n"
-    "speed, self-hosting is not the cost problem we\n"
-    "assumed. The real cost is fixed overhead per job:\n"
-    "an architecture decision, not a hardware purchase.", 12.5, gap=2)
+txt(s, Inches(7.1), Inches(5.22), Inches(5.4), Inches(1.4),
+    f"On the real 4B workload one GH200 runs {load_ratio:.1f}x faster\n"
+    f"than eight TPU chips and costs {cost_ratio_4b:.0f}x less:\n"
+    f"${k4_gpu:.2f} against ${k4_tpu:.2f} per 1 000 steps.\n\n"
+    "Self-hosting is not the cost problem we assumed.\n"
+    "The real cost is fixed overhead per job.", 12.5, gap=2)
 
 txt(s, Inches(0.62), Inches(6.75), Inches(12.1), Inches(0.4),
-    "9 measured runs · 15 commits · github.com/RN0L/me344-qwen3-icd10-profiling",
+    f"{sum(1 for r in recs.values())} measured runs  ·  "
+    "github.com/RN0L/me344-qwen3-icd10-profiling",
     11, color=GREY, align=PP_ALIGN.CENTER)
 
 notes(s, """

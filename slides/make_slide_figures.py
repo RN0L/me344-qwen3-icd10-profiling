@@ -121,3 +121,38 @@ fig.savefig(OUT / "slide3-walltime.png", dpi=200, bbox_inches="tight")
 plt.close(fig)
 
 print(f"wrote {OUT.relative_to(REPO)}/slide4-comparison.png and slide3-walltime.png")
+
+
+# ---------------------------------------------------------------- slide 4 sweep
+g4 = {r["config"]["batch_size"]: r for r in recs.values()
+      if r["backend"] == "gpu" and r["config"]["model"].endswith("4B")}
+t4 = {r["config"]["batch_size"]: r for r in recs.values()
+      if r["backend"] == "tpu" and r["config"]["model"].endswith("4B")
+      and r["config"]["seq_len"] == 1024}
+
+fig, ax = plt.subplots(figsize=(9.5, 2.6))
+bs = [8, 16, 32]
+gv = [g4[b]["steady"]["tokens_per_s"] if g4.get(b) and g4[b]["status"] == "ok" else None for b in bs]
+tv = [t4[b]["steady"]["tokens_per_s"] if t4.get(b) and t4[b]["status"] == "ok" else None for b in bs]
+x = np.arange(len(bs))
+ax.plot(x, gv, "o-", color=ORANGE, lw=3, ms=10, label="GH200, 1 chip")
+ax.plot([i for i, v in zip(x, tv) if v], [v for v in tv if v], "s-", color=TEAL,
+        lw=3, ms=10, label="v5e, 8 chips")
+for i, v in enumerate(gv):
+    if v: ax.annotate(f"{v:,.0f}", (i, v), textcoords="offset points", xytext=(0, 11),
+                      ha="center", fontsize=11, fontweight="bold", color=ORANGE)
+for i, v in enumerate(tv):
+    if v: ax.annotate(f"{v:,.0f}", (i, v), textcoords="offset points", xytext=(0, -20),
+                      ha="center", fontsize=11, fontweight="bold", color=TEAL)
+ax.annotate("v5e out of memory", (2, 4600), xytext=(1.45, 7600), fontsize=11,
+            color=TEAL, style="italic",
+            arrowprops=dict(arrowstyle="->", color=TEAL, lw=1.4))
+ax.set_xticks(x); ax.set_xticklabels([f"batch {b}" for b in bs])
+ax.set_ylabel("tokens / s"); ax.set_ylim(2500, 15500)
+ax.legend(frameon=False, loc="center left", fontsize=11)
+ax.set_title("Qwen3-4B: the Hopper keeps scaling, the slice is saturated at batch 8",
+             loc="left", fontweight="bold", fontsize=13, pad=10)
+plt.tight_layout()
+fig.savefig(OUT / "slide4-sweep.png", dpi=200, bbox_inches="tight")
+plt.close(fig)
+print("wrote slide4-sweep.png")

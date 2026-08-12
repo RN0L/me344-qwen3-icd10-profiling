@@ -538,12 +538,27 @@ def like_for_like(runs: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if len(backends) < 2:
             continue
         model, batch_size, seq_len = key
-        baseline = next(m for m in members if m["backend"] == "cpu")
+        # The CPU is the natural baseline, but it cannot run every configuration: at
+        # Qwen3-4B it does not fit on the node at all, so the 4B families contain only
+        # GPU and TPU. Fall back to the slowest member there and say so, rather than
+        # raising StopIteration on a comparison that is perfectly meaningful.
+        baseline = next((m for m in members if m["backend"] == "cpu"), None)
+        baseline_is_cpu = baseline is not None
+        if baseline is None:
+            baseline = max(members, key=lambda m: m["measured"]["median_step_s"])
         entry: Dict[str, Any] = {
             "model": model,
             "batch_size": batch_size,
             "seq_len": seq_len,
             "baseline_run_id": baseline["run_id"],
+            "baseline_backend": baseline["backend"],
+            "baseline_is_cpu": baseline_is_cpu,
+            "speedup_note": (
+                "speedups are relative to the CPU run" if baseline_is_cpu else
+                f"no CPU run exists at {model} bs={batch_size} seq={seq_len} "
+                f"(it does not fit on the 31 GiB node), so speedups are relative to the "
+                f"slowest backend present, {baseline['backend']}"
+            ),
             "backends": {},
         }
         for member in members:

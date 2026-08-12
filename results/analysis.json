@@ -2,10 +2,14 @@
   "generated_by": "profiling/analyze.py",
   "generated_from": {
     "results_dir": "results",
-    "n_records": 9,
+    "n_records": 13,
     "run_ids": [
       "cpu-x86-32c-0p6b-bs1-seq1024",
       "gpu-gh200-0p6b-bs1-seq1024",
+      "gpu-gh200-bs16-seq1024",
+      "gpu-gh200-bs32-seq1024",
+      "gpu-gh200-bs64-seq1024",
+      "gpu-gh200-bs8-seq1024",
       "tpu-v5e8-bs1-seq1024-filecache-0p6b",
       "tpu-v5e8-bs16-seq1024-filecache",
       "tpu-v5e8-bs32-seq1024-filecache",
@@ -22,6 +26,15 @@
         "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
       ],
       "gpu-gh200-0p6b-bs1-seq1024": [
+        "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
+      ],
+      "gpu-gh200-bs16-seq1024": [
+        "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
+      ],
+      "gpu-gh200-bs32-seq1024": [
+        "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
+      ],
+      "gpu-gh200-bs8-seq1024": [
         "notes contain 'loss could be captured' \u2014 no per-step loss was obtainable from Tunix; it is null rather than fabricated; steps[].loss of this record is not a measurement"
       ],
       "tpu-v5e8-bs1-seq1024-filecache-0p6b": [
@@ -48,6 +61,15 @@
         "steps[].loss"
       ],
       "gpu-gh200-0p6b-bs1-seq1024": [
+        "steps[].loss"
+      ],
+      "gpu-gh200-bs16-seq1024": [
+        "steps[].loss"
+      ],
+      "gpu-gh200-bs32-seq1024": [
+        "steps[].loss"
+      ],
+      "gpu-gh200-bs8-seq1024": [
         "steps[].loss"
       ],
       "tpu-v5e8-bs1-seq1024-filecache-0p6b": [
@@ -293,6 +315,418 @@
         "compute_fraction_pct": 2.476023852096589,
         "overhead_fraction_pct": 97.52397614790341,
         "fixed_excl_scheduler_s": 114.70292479451746
+      }
+    },
+    "gpu-gh200-bs16-seq1024": {
+      "run_id": "gpu-gh200-bs16-seq1024",
+      "backend": "gpu",
+      "status": "ok",
+      "source_file": "results/gpu-gh200-bs16-seq1024.json",
+      "hardware": {
+        "label": "NVIDIA GH200 480GB",
+        "chips": 1,
+        "chip_model": "GH200"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 16,
+        "seq_len": 1024,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "none",
+        "max_steps": 25,
+        "devices": 1
+      },
+      "measured": {
+        "total_wall_s": 204.63302108924836,
+        "median_step_s": 1.3103294293396175,
+        "p10_step_s": 1.2903243453707547,
+        "p90_step_s": 1.5807184341363643,
+        "tokens_per_s": 12503.72588232048,
+        "docs_per_s": 12.210669806953593,
+        "peak_bytes": 35248930816.0,
+        "peak_pct": 34.3472530167261,
+        "capacity_bytes": 102625181696.0,
+        "utilization_mean_pct": 23.554973821989527,
+        "utilization_max_pct": 100.0,
+        "memory_occupancy_mean_pct": 30.230625728567485,
+        "memory_occupancy_max_pct": 34.3472530167261,
+        "micro_f1": null,
+        "tokens_per_s_per_chip": 12503.72588232048
+      },
+      "phases_contract": {
+        "submit_to_running_s": 7.0,
+        "image_pull_s": null,
+        "model_load_s": 4.683655018918216,
+        "compile_s": 61.19913826324046,
+        "steady_state_s": 85.69797078380361,
+        "checkpoint_write_s": 0.0,
+        "other_s": 46.052257023286074
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 3.420757785199794,
+        "image_pull_s": null,
+        "model_load_s": 2.2888070527363684,
+        "compile_s": 29.9067755230712,
+        "steady_state_s": 41.87885724778867,
+        "checkpoint_write_s": 0.0,
+        "other_s": 22.504802391203963
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 7.0,
+          "image_pull_s": null,
+          "process_init_s": 46.052257023286074,
+          "checkpoint_load_s": 4.683655018918216,
+          "compile_s": 109.04898080928251,
+          "straggler_s": 5.08989250427112,
+          "steady_compute_s": 32.75823573349044,
+          "checkpoint_write_s": 0.0
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 3.420757785199794,
+          "image_pull_s": null,
+          "process_init_s": 22.504802391203963,
+          "checkpoint_load_s": 2.2888070527363684,
+          "compile_s": 53.29002143877944,
+          "straggler_s": 2.487327058545073,
+          "steady_compute_s": 16.00828427353536,
+          "checkpoint_write_s": 0.0
+        },
+        "unattributed_s": 0.0,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 25,
+          "compile_excess_s": 59.88880883390084,
+          "recompile_excess_s": 49.16017197538167,
+          "straggler_excess_s": 5.08989250427112,
+          "second_step_is_recompile": true,
+          "second_step_ratio": 38.51741422777745,
+          "first_step_cost_in_steady_steps": 46.70515436265804,
+          "longest_step_s": 61.19913826324046,
+          "longest_step_index": 1
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 7.59,
+        "lora_wrap": 16.24,
+        "data_prep": 2.07,
+        "trainer_build": 1.57
+      },
+      "other_s_composition_residual_s": 18.582257023286076,
+      "amortisation": {
+        "fixed_s": 171.87478535575792,
+        "marginal_s_per_step": 1.3103294293396175,
+        "n_steps_recorded": 25,
+        "compute_fraction_pct": 16.00828427353536,
+        "overhead_fraction_pct": 83.99171572646465,
+        "fixed_excl_scheduler_s": 164.87478535575792
+      }
+    },
+    "gpu-gh200-bs32-seq1024": {
+      "run_id": "gpu-gh200-bs32-seq1024",
+      "backend": "gpu",
+      "status": "ok",
+      "source_file": "results/gpu-gh200-bs32-seq1024.json",
+      "hardware": {
+        "label": "NVIDIA GH200 480GB",
+        "chips": 1,
+        "chip_model": "GH200"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 32,
+        "seq_len": 1024,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "none",
+        "max_steps": 25,
+        "devices": 1
+      },
+      "measured": {
+        "total_wall_s": 222.17017110297456,
+        "median_step_s": 2.479018381331116,
+        "p10_step_s": 2.469036967167631,
+        "p90_step_s": 2.490702859079465,
+        "tokens_per_s": 13218.135148479669,
+        "docs_per_s": 12.908335105937176,
+        "peak_bytes": 69577211904.0,
+        "peak_pct": 67.79740679057126,
+        "capacity_bytes": 102625181696.0,
+        "utilization_mean_pct": 28.115942028985508,
+        "utilization_max_pct": 100.0,
+        "memory_occupancy_mean_pct": 58.61372188778317,
+        "memory_occupancy_max_pct": 67.79740679057126,
+        "micro_f1": null,
+        "tokens_per_s_per_chip": 13218.135148479669
+      },
+      "phases_contract": {
+        "submit_to_running_s": 7.0,
+        "image_pull_s": null,
+        "model_load_s": 4.344464462716132,
+        "compile_s": 72.72346956282854,
+        "steady_state_s": 83.32803699700162,
+        "checkpoint_write_s": 0.0,
+        "other_s": 54.77420008042827
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 3.1507379974765115,
+        "image_pull_s": null,
+        "model_load_s": 1.9554670373380136,
+        "compile_s": 32.73322840856149,
+        "steady_state_s": 37.50640177451165,
+        "checkpoint_write_s": 0.0,
+        "other_s": 24.654164782112336
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 7.0,
+          "image_pull_s": null,
+          "process_init_s": 54.77420008042827,
+          "checkpoint_load_s": 4.344464462716132,
+          "compile_s": 118.84138718619943,
+          "straggler_s": 0.024843653663992882,
+          "steady_compute_s": 37.18527571996674,
+          "checkpoint_write_s": 0.0
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 3.1507379974765115,
+          "image_pull_s": null,
+          "process_init_s": 24.654164782112336,
+          "checkpoint_load_s": 1.9554670373380136,
+          "compile_s": 53.49115346862525,
+          "straggler_s": 0.011182263370755561,
+          "steady_compute_s": 16.737294451077137,
+          "checkpoint_write_s": 0.0
+        },
+        "unattributed_s": 0.0,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 15,
+          "compile_excess_s": 70.24445118149742,
+          "recompile_excess_s": 48.596936004702,
+          "straggler_excess_s": 0.024843653663992882,
+          "second_step_is_recompile": true,
+          "second_step_ratio": 20.603297970952415,
+          "first_step_cost_in_steady_steps": 29.335591099481668,
+          "longest_step_s": 72.72346956282854,
+          "longest_step_index": 1
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 7.18,
+        "lora_wrap": 16.13,
+        "data_prep": 1.95,
+        "trainer_build": 1.62
+      },
+      "other_s_composition_residual_s": 27.894200080428273,
+      "amortisation": {
+        "fixed_s": 184.98489538300782,
+        "marginal_s_per_step": 2.479018381331116,
+        "n_steps_recorded": 15,
+        "compute_fraction_pct": 16.737294451077137,
+        "overhead_fraction_pct": 83.26270554892287,
+        "fixed_excl_scheduler_s": 177.98489538300782
+      }
+    },
+    "gpu-gh200-bs64-seq1024": {
+      "run_id": "gpu-gh200-bs64-seq1024",
+      "backend": "gpu",
+      "status": "oom",
+      "source_file": "results/gpu-gh200-bs64-seq1024.json",
+      "hardware": {
+        "label": "NVIDIA GH200 480GB",
+        "chips": 1,
+        "chip_model": "GH200"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 64,
+        "seq_len": 1024,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "none",
+        "max_steps": 25,
+        "devices": 1
+      },
+      "measured": {
+        "total_wall_s": 305.8310541007668,
+        "median_step_s": null,
+        "p10_step_s": null,
+        "p90_step_s": null,
+        "tokens_per_s": null,
+        "docs_per_s": null,
+        "peak_bytes": null,
+        "peak_pct": null,
+        "capacity_bytes": null,
+        "utilization_mean_pct": 4.364261168384879,
+        "utilization_max_pct": 100.0,
+        "memory_occupancy_mean_pct": 61.11717784343449,
+        "memory_occupancy_max_pct": 67.66662239069795,
+        "micro_f1": null
+      },
+      "phases_contract": {
+        "submit_to_running_s": 7.0,
+        "image_pull_s": null,
+        "model_load_s": 4.248451578896493,
+        "compile_s": 0.0,
+        "steady_state_s": 0.0,
+        "checkpoint_write_s": 0.0,
+        "other_s": 294.5826025218703
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 2.2888453955671895,
+        "image_pull_s": null,
+        "model_load_s": 1.3891498335210561,
+        "compile_s": 0.0,
+        "steady_state_s": 0.0,
+        "checkpoint_write_s": 0.0,
+        "other_s": 96.32200477091176
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 7.0,
+          "image_pull_s": null,
+          "process_init_s": 294.5826025218703,
+          "checkpoint_load_s": 4.248451578896493,
+          "compile_s": 0.0,
+          "straggler_s": 0.0,
+          "steady_compute_s": null,
+          "checkpoint_write_s": 0.0
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 2.2888453955671895,
+          "image_pull_s": null,
+          "process_init_s": 96.32200477091176,
+          "checkpoint_load_s": 1.3891498335210561,
+          "compile_s": 0.0,
+          "straggler_s": 0.0,
+          "steady_compute_s": null,
+          "checkpoint_write_s": 0.0
+        },
+        "unattributed_s": 0.0,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 0,
+          "compile_excess_s": null,
+          "recompile_excess_s": null,
+          "straggler_excess_s": null,
+          "second_step_is_recompile": null
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 6.87,
+        "lora_wrap": 16.29,
+        "data_prep": 1.92,
+        "trainer_build": 1.6
+      },
+      "other_s_composition_residual_s": 267.9026025218703,
+      "amortisation": null
+    },
+    "gpu-gh200-bs8-seq1024": {
+      "run_id": "gpu-gh200-bs8-seq1024",
+      "backend": "gpu",
+      "status": "ok",
+      "source_file": "results/gpu-gh200-bs8-seq1024.json",
+      "hardware": {
+        "label": "NVIDIA GH200 480GB",
+        "chips": 1,
+        "chip_model": "GH200"
+      },
+      "config": {
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 8,
+        "seq_len": 1024,
+        "dtype": "bfloat16",
+        "remat": "DECODER",
+        "file_cache_capacity": "none",
+        "max_steps": 25,
+        "devices": 1
+      },
+      "measured": {
+        "total_wall_s": 183.25866013858467,
+        "median_step_s": 0.7088230149820447,
+        "p10_step_s": 0.6969431847333908,
+        "p90_step_s": 0.8713433910626938,
+        "tokens_per_s": 11557.186810881858,
+        "docs_per_s": 11.286315245001814,
+        "peak_bytes": 35244736512.0,
+        "peak_pct": 34.343166004230056,
+        "capacity_bytes": 102625181696.0,
+        "utilization_mean_pct": 13.124260355029586,
+        "utilization_max_pct": 100.0,
+        "memory_occupancy_mean_pct": 29.678034708046745,
+        "memory_occupancy_max_pct": 34.343166004230056,
+        "micro_f1": null,
+        "tokens_per_s_per_chip": 11557.186810881858
+      },
+      "phases_contract": {
+        "submit_to_running_s": 7.0,
+        "image_pull_s": null,
+        "model_load_s": 4.341206485871226,
+        "compile_s": 57.84150819526985,
+        "steady_state_s": 70.83799731498584,
+        "checkpoint_write_s": 0.0,
+        "other_s": 43.23794814245775
+      },
+      "phases_contract_pct": {
+        "submit_to_running_s": 3.8197376291556586,
+        "image_pull_s": null,
+        "model_load_s": 2.368895681430989,
+        "compile_s": 31.56276934008395,
+        "steady_state_s": 38.65465198829699,
+        "checkpoint_write_s": 0.0,
+        "other_s": 23.59394536103241
+      },
+      "breakdown": {
+        "segments": {
+          "scheduler_queue_s": 7.0,
+          "image_pull_s": null,
+          "process_init_s": 43.23794814245775,
+          "checkpoint_load_s": 4.341206485871226,
+          "compile_s": 107.194667999167,
+          "straggler_s": 3.7642621365375817,
+          "steady_compute_s": 17.720575374551117,
+          "checkpoint_write_s": 0.0
+        },
+        "segment_pct": {
+          "scheduler_queue_s": 3.8197376291556586,
+          "image_pull_s": null,
+          "process_init_s": 23.59394536103241,
+          "checkpoint_load_s": 2.368895681430989,
+          "compile_s": 58.493643857323725,
+          "straggler_s": 2.0540705327054964,
+          "steady_compute_s": 9.669706938351718,
+          "checkpoint_write_s": 0.0
+        },
+        "unattributed_s": 0.0,
+        "sums_to_total": true,
+        "detail": {
+          "n_steps_recorded": 25,
+          "compile_excess_s": 57.13268518028781,
+          "recompile_excess_s": 50.06198281887919,
+          "straggler_excess_s": 3.7642621365375817,
+          "second_step_is_recompile": true,
+          "second_step_ratio": 71.62691498546688,
+          "first_step_cost_in_steady_steps": 81.60218696727144,
+          "longest_step_s": 57.84150819526985,
+          "longest_step_index": 1
+        }
+      },
+      "other_s_composition": {
+        "jax_init": 7.26,
+        "lora_wrap": 15.85,
+        "data_prep": 2.01,
+        "trainer_build": 1.61
+      },
+      "other_s_composition_residual_s": 16.507948142457753,
+      "amortisation": {
+        "fixed_s": 165.53808476403356,
+        "marginal_s_per_step": 0.7088230149820447,
+        "n_steps_recorded": 25,
+        "compute_fraction_pct": 9.669706938351718,
+        "overhead_fraction_pct": 90.33029306164828,
+        "fixed_excl_scheduler_s": 158.53808476403356
       }
     },
     "tpu-v5e8-bs1-seq1024-filecache-0p6b": {
@@ -1032,6 +1466,9 @@
       "batch_size": 1,
       "seq_len": 1024,
       "baseline_run_id": "cpu-x86-32c-0p6b-bs1-seq1024",
+      "baseline_backend": "cpu",
+      "baseline_is_cpu": true,
+      "speedup_note": "speedups are relative to the CPU run",
       "backends": {
         "cpu": {
           "run_id": "cpu-x86-32c-0p6b-bs1-seq1024",
@@ -1063,6 +1500,72 @@
           "tokens_per_s": 12804.194734219645,
           "step_time_speedup_vs_cpu": 237.4511658299998,
           "speedup_per_chip": 29.681395728749976,
+          "strong_scaling_efficiency": null,
+          "strong_scaling_efficiency_note": "not derivable: no single-chip run of this backend was measured, so there is no same-architecture baseline to divide by. speedup_per_chip is a cross-architecture ratio and is not a parallel efficiency."
+        }
+      }
+    },
+    {
+      "model": "Qwen/Qwen3-4B",
+      "batch_size": 16,
+      "seq_len": 1024,
+      "baseline_run_id": "tpu-v5e8-bs16-seq1024-filecache",
+      "baseline_backend": "tpu",
+      "baseline_is_cpu": false,
+      "speedup_note": "no CPU run exists at Qwen/Qwen3-4B bs=16 seq=1024 (it does not fit on the 31 GiB node), so speedups are relative to the slowest backend present, tpu",
+      "backends": {
+        "gpu": {
+          "run_id": "gpu-gh200-bs16-seq1024",
+          "hardware": "NVIDIA GH200 480GB",
+          "chips": 1,
+          "median_step_s": 1.3103294293396175,
+          "tokens_per_s": 12503.72588232048,
+          "step_time_speedup_vs_cpu": 2.720681914163116,
+          "speedup_per_chip": 2.720681914163116,
+          "strong_scaling_efficiency": null,
+          "strong_scaling_efficiency_note": "not derivable: no single-chip run of this backend was measured, so there is no same-architecture baseline to divide by. speedup_per_chip is a cross-architecture ratio and is not a parallel efficiency."
+        },
+        "tpu": {
+          "run_id": "tpu-v5e8-bs16-seq1024-filecache",
+          "hardware": "TPU v5e 2x4",
+          "chips": 8,
+          "median_step_s": 3.564989579999974,
+          "tokens_per_s": 4595.805859269894,
+          "step_time_speedup_vs_cpu": 1.0,
+          "speedup_per_chip": 0.125,
+          "strong_scaling_efficiency": null,
+          "strong_scaling_efficiency_note": "not derivable: no single-chip run of this backend was measured, so there is no same-architecture baseline to divide by. speedup_per_chip is a cross-architecture ratio and is not a parallel efficiency."
+        }
+      }
+    },
+    {
+      "model": "Qwen/Qwen3-4B",
+      "batch_size": 8,
+      "seq_len": 1024,
+      "baseline_run_id": "tpu-v5e8-bs8-seq1024-filecache",
+      "baseline_backend": "tpu",
+      "baseline_is_cpu": false,
+      "speedup_note": "no CPU run exists at Qwen/Qwen3-4B bs=8 seq=1024 (it does not fit on the 31 GiB node), so speedups are relative to the slowest backend present, tpu",
+      "backends": {
+        "gpu": {
+          "run_id": "gpu-gh200-bs8-seq1024",
+          "hardware": "NVIDIA GH200 480GB",
+          "chips": 1,
+          "median_step_s": 0.7088230149820447,
+          "tokens_per_s": 11557.186810881858,
+          "step_time_speedup_vs_cpu": 2.4706097509324674,
+          "speedup_per_chip": 2.4706097509324674,
+          "strong_scaling_efficiency": null,
+          "strong_scaling_efficiency_note": "not derivable: no single-chip run of this backend was measured, so there is no same-architecture baseline to divide by. speedup_per_chip is a cross-architecture ratio and is not a parallel efficiency."
+        },
+        "tpu": {
+          "run_id": "tpu-v5e8-bs8-seq1024",
+          "hardware": "TPU v5e 2x4",
+          "chips": 8,
+          "median_step_s": 1.7511670740000227,
+          "tokens_per_s": 4678.023086219752,
+          "step_time_speedup_vs_cpu": 1.0000331084913758,
+          "speedup_per_chip": 0.12500413856142198,
           "strong_scaling_efficiency": null,
           "strong_scaling_efficiency_note": "not derivable: no single-chip run of this backend was measured, so there is no same-architecture baseline to divide by. speedup_per_chip is a cross-architecture ratio and is not a parallel efficiency."
         }
@@ -1158,6 +1661,190 @@
           "baseline_total_s": 1899225.1000750693,
           "target_total_s": 8304.467559327937,
           "end_to_end_speedup": 228.69920154505
+        }
+      ],
+      "note": "time(N) = fixed_s + N * median_step_s. fixed_s is the measured wall clock minus every recorded step charged at the steady-state rate; it is not fitted. The two runs recorded different step counts (the model is what makes them comparable at equal N)."
+    },
+    {
+      "baseline_run_id": "tpu-v5e8-bs16-seq1024-filecache",
+      "target_run_id": "gpu-gh200-bs16-seq1024",
+      "target_backend": "gpu",
+      "model": "Qwen/Qwen3-4B",
+      "baseline_fixed_s": 244.9942788990008,
+      "baseline_marginal_s_per_step": 3.564989579999974,
+      "target_fixed_s": 171.87478535575792,
+      "target_marginal_s_per_step": 1.3103294293396175,
+      "asymptotic_speedup": 2.720681914163116,
+      "breakeven_n_steps": -32.43038358655838,
+      "breakeven_note": "the target's fixed cost is already lower than the baseline's, so it wins at every run length; the negative value is not a threshold",
+      "points": [
+        {
+          "n_steps": 12,
+          "baseline_total_s": 287.7741538590005,
+          "target_total_s": 187.59873850783333,
+          "end_to_end_speedup": 1.5339876810897866
+        },
+        {
+          "n_steps": 100,
+          "baseline_total_s": 601.4932368989982,
+          "target_total_s": 302.90772828971967,
+          "end_to_end_speedup": 1.9857309032527983
+        },
+        {
+          "n_steps": 1000,
+          "baseline_total_s": 3809.9838588989746,
+          "target_total_s": 1482.2042146953754,
+          "end_to_end_speedup": 2.570485106657187
+        },
+        {
+          "n_steps": 10000,
+          "baseline_total_s": 35894.89007889874,
+          "target_total_s": 13275.169078751933,
+          "end_to_end_speedup": 2.703912083225489
+        },
+        {
+          "n_steps": 100000,
+          "baseline_total_s": 356743.9522788964,
+          "target_total_s": 131204.8177193175,
+          "end_to_end_speedup": 2.7189851598442667
+        }
+      ],
+      "note": "time(N) = fixed_s + N * median_step_s. fixed_s is the measured wall clock minus every recorded step charged at the steady-state rate; it is not fitted. The two runs recorded different step counts (the model is what makes them comparable at equal N)."
+    },
+    {
+      "baseline_run_id": "tpu-v5e8-bs16-seq1024-filecache",
+      "target_run_id": "tpu-v5e8-bs16-seq1024-filecache",
+      "target_backend": "tpu",
+      "model": "Qwen/Qwen3-4B",
+      "baseline_fixed_s": 244.9942788990008,
+      "baseline_marginal_s_per_step": 3.564989579999974,
+      "target_fixed_s": 244.9942788990008,
+      "target_marginal_s_per_step": 3.564989579999974,
+      "asymptotic_speedup": 1.0,
+      "breakeven_n_steps": null,
+      "breakeven_note": null,
+      "points": [
+        {
+          "n_steps": 12,
+          "baseline_total_s": 287.7741538590005,
+          "target_total_s": 287.7741538590005,
+          "end_to_end_speedup": 1.0
+        },
+        {
+          "n_steps": 100,
+          "baseline_total_s": 601.4932368989982,
+          "target_total_s": 601.4932368989982,
+          "end_to_end_speedup": 1.0
+        },
+        {
+          "n_steps": 1000,
+          "baseline_total_s": 3809.9838588989746,
+          "target_total_s": 3809.9838588989746,
+          "end_to_end_speedup": 1.0
+        },
+        {
+          "n_steps": 10000,
+          "baseline_total_s": 35894.89007889874,
+          "target_total_s": 35894.89007889874,
+          "end_to_end_speedup": 1.0
+        },
+        {
+          "n_steps": 100000,
+          "baseline_total_s": 356743.9522788964,
+          "target_total_s": 356743.9522788964,
+          "end_to_end_speedup": 1.0
+        }
+      ],
+      "note": "time(N) = fixed_s + N * median_step_s. fixed_s is the measured wall clock minus every recorded step charged at the steady-state rate; it is not fitted. The two runs recorded different step counts (the model is what makes them comparable at equal N)."
+    },
+    {
+      "baseline_run_id": "tpu-v5e8-bs8-seq1024-filecache",
+      "target_run_id": "gpu-gh200-bs8-seq1024",
+      "target_backend": "gpu",
+      "model": "Qwen/Qwen3-4B",
+      "baseline_fixed_s": 394.2031842580006,
+      "baseline_marginal_s_per_step": 1.75122505249999,
+      "target_fixed_s": 165.53808476403356,
+      "target_marginal_s_per_step": 0.7088230149820447,
+      "asymptotic_speedup": 2.4706097509324674,
+      "breakeven_n_steps": -219.363634436517,
+      "breakeven_note": "the target's fixed cost is already lower than the baseline's, so it wins at every run length; the negative value is not a threshold",
+      "points": [
+        {
+          "n_steps": 12,
+          "baseline_total_s": 415.21788488800047,
+          "target_total_s": 174.0439609438181,
+          "end_to_end_speedup": 2.3857069365482553
+        },
+        {
+          "n_steps": 100,
+          "baseline_total_s": 569.3256895079996,
+          "target_total_s": 236.42038626223803,
+          "end_to_end_speedup": 2.4081074331572334
+        },
+        {
+          "n_steps": 1000,
+          "baseline_total_s": 2145.4282367579904,
+          "target_total_s": 874.3610997460783,
+          "end_to_end_speedup": 2.4537096142326558
+        },
+        {
+          "n_steps": 10000,
+          "baseline_total_s": 17906.4537092579,
+          "target_total_s": 7253.7682345844805,
+          "end_to_end_speedup": 2.468572627380566
+        },
+        {
+          "n_steps": 100000,
+          "baseline_total_s": 175516.708434257,
+          "target_total_s": 71047.8395829685,
+          "end_to_end_speedup": 2.4704017668164484
+        }
+      ],
+      "note": "time(N) = fixed_s + N * median_step_s. fixed_s is the measured wall clock minus every recorded step charged at the steady-state rate; it is not fitted. The two runs recorded different step counts (the model is what makes them comparable at equal N)."
+    },
+    {
+      "baseline_run_id": "tpu-v5e8-bs8-seq1024-filecache",
+      "target_run_id": "tpu-v5e8-bs8-seq1024",
+      "target_backend": "tpu",
+      "model": "Qwen/Qwen3-4B",
+      "baseline_fixed_s": 394.2031842580006,
+      "baseline_marginal_s_per_step": 1.75122505249999,
+      "target_fixed_s": 624.3295863149987,
+      "target_marginal_s_per_step": 1.7511670740000227,
+      "asymptotic_speedup": 1.0000331084913758,
+      "breakeven_n_steps": 3969167.918918131,
+      "breakeven_note": null,
+      "points": [
+        {
+          "n_steps": 12,
+          "baseline_total_s": 415.21788488800047,
+          "target_total_s": 645.3435912029989,
+          "end_to_end_speedup": 0.643405916705524
+        },
+        {
+          "n_steps": 100,
+          "baseline_total_s": 569.3256895079996,
+          "target_total_s": 799.4462937150009,
+          "end_to_end_speedup": 0.7121500143084806
+        },
+        {
+          "n_steps": 1000,
+          "baseline_total_s": 2145.4282367579904,
+          "target_total_s": 2375.4966603150215,
+          "end_to_end_speedup": 0.9031493382413255
+        },
+        {
+          "n_steps": 10000,
+          "baseline_total_s": 17906.4537092579,
+          "target_total_s": 18136.000326315225,
+          "end_to_end_speedup": 0.9873430407517002
+        },
+        {
+          "n_steps": 100000,
+          "baseline_total_s": 175516.708434257,
+          "target_total_s": 175741.03698631728,
+          "end_to_end_speedup": 0.9987235277775346
         }
       ],
       "note": "time(N) = fixed_s + N * median_step_s. fixed_s is the measured wall clock minus every recorded step charged at the steady-state rate; it is not fitted. The two runs recorded different step counts (the model is what makes them comparable at equal N)."
@@ -1318,14 +2005,18 @@
     }
   ],
   "scheduler_latency": {
-    "n": 8,
+    "n": 12,
     "min_s": 4.0,
     "max_s": 207.0,
-    "median_s": 115.0,
-    "mean_s": 91.0,
+    "median_s": 9.0,
+    "mean_s": 63.0,
     "spread_ratio": 51.75,
     "per_run": {
       "gpu-gh200-0p6b-bs1-seq1024": 11.0,
+      "gpu-gh200-bs16-seq1024": 7.0,
+      "gpu-gh200-bs32-seq1024": 7.0,
+      "gpu-gh200-bs64-seq1024": 7.0,
+      "gpu-gh200-bs8-seq1024": 7.0,
       "tpu-v5e8-bs1-seq1024-filecache-0p6b": 143.0,
       "tpu-v5e8-bs16-seq1024-filecache": 5.0,
       "tpu-v5e8-bs32-seq1024-filecache": 128.0,
@@ -1400,6 +2091,54 @@
         "tokens_in_basis": 1024000,
         "usd_per_million_tokens": 0.12765042616941225,
         "usd_per_million_tokens_excl_queue": 0.12081720134302334
+      },
+      {
+        "run_id": "gpu-gh200-bs16-seq1024",
+        "backend": "gpu",
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 16,
+        "seq_len": 1024,
+        "usd_per_hour": 2.29,
+        "rate_basis": "1 x GH200 market rate at $2.29/GPU-hour",
+        "price_is_proxy": true,
+        "wall_s_for_basis": 1482.2042146953754,
+        "usd_per_1000_steps": 0.9428465699034472,
+        "usd_per_1000_steps_excl_queue": 0.9383937921256693,
+        "tokens_in_basis": 16384000,
+        "usd_per_million_tokens": 0.057546787713833446,
+        "usd_per_million_tokens_excl_queue": 0.057275011726420244
+      },
+      {
+        "run_id": "gpu-gh200-bs32-seq1024",
+        "backend": "gpu",
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 32,
+        "seq_len": 1024,
+        "usd_per_hour": 2.29,
+        "rate_basis": "1 x GH200 market rate at $2.29/GPU-hour",
+        "price_is_proxy": true,
+        "wall_s_for_basis": 2664.003276714124,
+        "usd_per_1000_steps": 1.694602084354262,
+        "usd_per_1000_steps_excl_queue": 1.6901493065764843,
+        "tokens_in_basis": 32768000,
+        "usd_per_million_tokens": 0.05171515150006903,
+        "usd_per_million_tokens_excl_queue": 0.05157926350636244
+      },
+      {
+        "run_id": "gpu-gh200-bs8-seq1024",
+        "backend": "gpu",
+        "model": "Qwen/Qwen3-4B",
+        "batch_size": 8,
+        "seq_len": 1024,
+        "usd_per_hour": 2.29,
+        "rate_basis": "1 x GH200 market rate at $2.29/GPU-hour",
+        "price_is_proxy": true,
+        "wall_s_for_basis": 874.3610997460783,
+        "usd_per_1000_steps": 0.556190810671811,
+        "usd_per_1000_steps_excl_queue": 0.5517380328940331,
+        "tokens_in_basis": 8192000,
+        "usd_per_million_tokens": 0.0678943860683363,
+        "usd_per_million_tokens_excl_queue": 0.0673508340935099
       },
       {
         "run_id": "tpu-v5e8-bs1-seq1024-filecache-0p6b",
@@ -1541,6 +2280,20 @@
     "train_docs_max": 503,
     "evidence": [
       {
+        "run_id": "gpu-gh200-bs32-seq1024",
+        "batches": 15,
+        "batch_size": 32,
+        "implies_min": 480,
+        "implies_max": 511
+      },
+      {
+        "run_id": "gpu-gh200-bs64-seq1024",
+        "batches": 7,
+        "batch_size": 64,
+        "implies_min": 448,
+        "implies_max": 511
+      },
+      {
         "run_id": "tpu-v5e8-bs16-seq1024-filecache",
         "batches": 31,
         "batch_size": 16,
@@ -1577,9 +2330,9 @@
       "gpu",
       "tpu"
     ],
-    "n_records": 9,
-    "n_ok": 8,
-    "n_oom": 1,
+    "n_records": 13,
+    "n_ok": 11,
+    "n_oom": 2,
     "models": [
       "Qwen/Qwen3-0.6B",
       "Qwen/Qwen3-4B"
