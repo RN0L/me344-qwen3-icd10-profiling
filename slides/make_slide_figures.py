@@ -81,7 +81,7 @@ a2.annotate("both accelerators below 10 %\nnothing to parallelise",
             arrowprops=dict(arrowstyle="->", color=ORANGE, lw=1.4,
                             connectionstyle="arc3,rad=-0.25"))
 
-fig.suptitle("One Hopper chip keeps pace with eight TPU chips — because neither is busy",
+fig.suptitle("One Hopper chip keeps pace with eight TPU chips, because neither is busy",
              fontsize=16, fontweight="bold", x=0.008, ha="left", y=1.045)
 plt.tight_layout()
 fig.savefig(OUT / "slide4-comparison.png", dpi=200, bbox_inches="tight")

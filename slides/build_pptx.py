@@ -2,7 +2,7 @@
 """Build the 5-slide deck from the measured records.
 
 Every figure on these slides is read out of ``results/`` at build time. Nothing is
-transcribed, so the deck cannot drift from the data — re-run this after any new run
+transcribed, so the deck cannot drift from the data, re-run this after any new run
 and the numbers update themselves.
 
     uv run --with python-pptx --with pillow python slides/build_pptx.py
@@ -177,23 +177,23 @@ def notes(s, t):
     s.notes_slide.notes_text_frame.text = t.strip()
 
 
-# ============================== 1 — Problem ====================================
+# ============================== 1. Problem ====================================
 s = slide(1, "The problem", "Can a clinic afford to run its own coding model?")
 
 panel(s, Inches(0.62), Inches(1.85), Inches(6.0), Inches(2.35))
 txt(s, Inches(0.92), Inches(2.08), Inches(5.5), Inches(0.35),
-    "Dr. Findus — our startup, Berlin", 14, bold=True)
+    "Dr. Findus, our startup in Berlin", 14, bold=True)
 txt(s, Inches(0.92), Inches(2.5), Inches(5.5), Inches(1.6),
     "German GPs must code every consultation.\n"
     "We read the note and propose the codes;\n"
-    "the physician confirms each one — a legal\n"
+    "the physician confirms each one. A legal\n"
     "requirement here. Reliability is the product:\n"
     "over-coding is fraud exposure, not error.", 13, gap=3)
 
 txt(s, Inches(7.0), Inches(1.95), Inches(5.7), Inches(0.8),
     "Today that runs on hosted APIs.\nCould it run on our own hardware?", 16, bold=True, gap=2)
 txt(s, Inches(7.0), Inches(2.85), Inches(5.7), Inches(1.4),
-    "An infrastructure question, not a model one —\n"
+    "An infrastructure question, not a model one.\n"
     "so we built the workload and measured it.\n\n"
     "Qwen3 + LoRA on CodiEsp: 1 000 clinical case\n"
     "reports, ICD-10 labelled, CC-BY 4.0.", 13, color=GREY, gap=3)
@@ -201,15 +201,15 @@ txt(s, Inches(7.0), Inches(2.85), Inches(5.7), Inches(1.4),
 stat(s, Inches(0.62), Inches(4.55), Inches(3.0), "8 GB",
      "of weights at 4B, before a single\nactivation exists")
 stat(s, Inches(4.0), Inches(4.55), Inches(3.0), "2 489",
-     "tokens in the longest case —\nsequence length is not free")
+     "tokens in the longest case.\nSequence length is not free")
 stat(s, Inches(7.4), Inches(4.55), Inches(5.3), "3 backends",
      "CPU · GPU · TPU, one JAX program,\nno per-backend reimplementation")
 
 txt(s, Inches(0.62), Inches(6.35), Inches(12.0), Inches(0.7),
-    "Where does the time actually go — and what does it take to run this at all?",
+    "Where does the time actually go, and what does it take to run this at all?",
     19, bold=True, color=ORANGE)
 txt(s, Inches(0.62), Inches(6.85), Inches(12.0), Inches(0.4),
-    "No patient data was used. Model accuracy earns no marks here — the object of study is the infrastructure.",
+    "No patient data was used. Model accuracy earns no marks here. The object of study is the infrastructure.",
     11, color=GREY, italic=True)
 
 notes(s, """
@@ -219,13 +219,13 @@ LEONARD  (~50 s)
 
 We run a startup called Dr. Findus. German GPs have to attach billing and ICD-10
 codes to every single consultation. We read the clinical note and propose the
-codes — the physician confirms each one before anything is written, which is a
+codes, the physician confirms each one before anything is written, which is a
 legal requirement here. For us reliability is the product: over-coding is not a
 bug, it is fraud exposure.
 
 Today that runs on hosted APIs. The question we could not answer was whether it
 could run on our own hardware, and what that would cost. That is an
-infrastructure question, not a model question — so we built the workload and
+infrastructure question, not a model question, so we built the workload and
 measured it instead of guessing.
 
 The workload is a LoRA fine-tune of Qwen3 on CodiEsp: a thousand real Spanish
@@ -233,19 +233,19 @@ clinical case reports annotated with ICD-10 codes. Eight gigabytes of weights,
 cases up to two and a half thousand tokens, three backends, one JAX program.
 
 And to be clear about what is being graded: accuracy earns no marks. What we are
-studying is where the time goes — and what it takes to run the job at all."
+studying is where the time goes, and what it takes to run the job at all."
 """)
 
-# ============================== 2 — Approach ===================================
+# ============================== 2. Approach ===================================
 s = slide(2, "Approach", "One program. Three backends. All measured.")
 
 cols = [
     ("Compilation", ORANGE,
-     "One JAX / Flax program.\nXLA lowers it to CPU, CUDA\nand TPU.\nLoRA via qwix, training via\nTunix — no per-backend\nreimplementation."),
+     "One JAX / Flax program.\nXLA lowers it to CPU, CUDA\nand TPU.\nLoRA via qwix, training via\nTunix, no per-backend\nreimplementation."),
     ("Orchestration", ORANGE,
      "3 pinned Docker images.\nKubernetes Jobs across two\nclusters.\nKueue admission on the TPU\npool. Every manifest states\nits CPU, memory and chips."),
     ("Storage", ORANGE,
-     "gcsfuse CSI, implicit-dirs.\nAn 8 GB checkpoint read\nfrom a bucket.\nThe file cache was left as a\nknob rather than fixed —\nthat knob became the\nexperiment."),
+     "gcsfuse CSI, implicit-dirs.\nAn 8 GB checkpoint read\nfrom a bucket.\nThe file cache was left as a\nknob rather than fixed -\nthat knob became the\nexperiment."),
 ]
 for i, (head, col, body) in enumerate(cols):
     x = Inches(0.62 + i * 4.15)
@@ -257,7 +257,7 @@ table(s, Inches(0.62), Inches(4.75), [
     ["Backend", "Hardware", "Host arch", "How the code got there"],
     ["CPU", "32-core x86_64, 31 GiB", "x86_64", "bare node"],
     ["GPU", "NVIDIA GH200 480 GB", "ARM64 Grace", "public image + ConfigMap"],
-    ["TPU", "v5e 2×4 — 8 chips", "x86_64", "private registry + gcsfuse"],
+    ["TPU", "v5e 2×4, 8 chips", "x86_64", "private registry + gcsfuse"],
 ], [Inches(1.5), Inches(4.1), Inches(2.4), Inches(4.1)], size=12.5,
     right_align_from=99)
 
@@ -269,7 +269,7 @@ notes(s, """
 LEONARD  (~50 s)
 
 "The architecture is deliberately one code path. A single JAX program, and XLA
-lowers it to three different backends. No per-backend reimplementation — that is
+lowers it to three different backends. No per-backend reimplementation, that is
 what makes the comparison honest, because all three run literally the same code.
 
 Around it: three pinned Docker images, Kubernetes Jobs across two clusters, and
@@ -278,7 +278,7 @@ accelerator limits explicitly.
 
 Storage is where one of our two headline results comes from. The eight-gigabyte
 checkpoint is read from a bucket over gcsfuse, and we deliberately left the file
-cache as a knob instead of fixing it — because that knob turned out to be the
+cache as a knob instead of fixing it, because that knob turned out to be the
 experiment.
 
 One line to flag before Luis takes over: the GH200's host processor is ARM64,
@@ -288,17 +288,17 @@ to it at the end."
 → hand over to Luis.
 """)
 
-# ============================== 3 — Measurements ================================
+# ============================== 3. Measurements ================================
 s = slide(3, "Measurements", "We did not time the job. We took it apart.")
 
 txt(s, Inches(0.62), Inches(1.95), Inches(5.3), Inches(2.6),
     "Every run takes its own wall clock apart\n"
-    "into six phases — scheduling, image pull,\n"
+    "into six phases: scheduling, image pull,\n"
     "checkpoint load, XLA compile, the steady-\n"
     "state steps, checkpoint write.\n\n"
     "Batch and sequence sweeps walked until\n"
     "the job dies. A failed cell is recorded,\n"
-    "never dropped — the boundary is the\n"
+    "never dropped. The boundary is the\n"
     "measurement.\n\n"
     "One schema, one JSON per run. Every figure\n"
     "here reads those files and nothing else.", 13, gap=3)
@@ -311,7 +311,7 @@ txt(s, Inches(6.72), Inches(4.08), Inches(5.7), Inches(0.35),
     "The schema caught a lie", 15, bold=True, color=RGBColor(0xDC, 0x26, 0x26))
 txt(s, Inches(6.72), Inches(4.5), Inches(5.7), Inches(1.6),
     "One run reported 93 µs per step and 11 M tokens/s.\n"
-    "Impossible — yet it carried status \"ok\".\n"
+    "Impossible, yet it carried status \"ok\".\n"
     "Its own notes flagged that it may have timed\n"
     "dispatch, not completion. Discarded, repeated.", 12, gap=2)
 
@@ -319,7 +319,7 @@ notes(s, """
 LUIS  (~55 s)
 
 "We did not measure total runtime and divide by steps. Every run takes its own
-wall clock apart into six phases — scheduling, image pull, checkpoint load, XLA
+wall clock apart into six phases: scheduling, image pull, checkpoint load, XLA
 compile, the steady-state steps, and checkpoint write. The chart on the right is
 that decomposition for one run.
 
@@ -327,24 +327,24 @@ On top of it we swept batch size and sequence length until the job died. We keep
 the failed cell rather than dropping it, because the failure boundary is exactly
 what a memory chart needs.
 
-All of it writes against one fixed schema — one JSON per run — and every figure
+All of it writes against one fixed schema, one JSON per run, and every figure
 in this deck reads those files and nothing else. Nothing on these slides was
 typed in by hand.
 
 The red box is the part I would defend hardest. One run came back reporting
 ninety-three microseconds per step. Eleven million tokens a second. Physically
-impossible — and it carried a passing status. What caught it was that the
+impossible, and it carried a passing status. What caught it was that the
 telemetry module had written into its own notes field that it might have timed
 dispatch instead of completion. We threw the run away and repeated it. Without
 that field, that number would have gone straight into a bar chart."
 """)
 
-# ============================== 4 — Results ====================================
+# ============================== 4. Results ====================================
 s = slide(4, "Results", "One Hopper chip kept up with eight TPU chips.")
 
 table(s, Inches(0.62), Inches(1.82), [
     ["Qwen3-0.6B · bs 1 · seq 1024", "CPU", "GPU GH200", "TPU v5e 2×4"],
-    ["chips", "—", "1", "8"],
+    ["chips", "-", "1", "8"],
     ["median step", f"{c_s:.2f} s", f"{g_s:.4f} s", f"{t_s:.4f} s"],
     ["throughput", f"{cpu['steady']['tokens_per_s']:,.0f}", f"{gpu['steady']['tokens_per_s']:,.0f}",
      f"{tpu['steady']['tokens_per_s']:,.0f}"],
@@ -358,7 +358,7 @@ table(s, Inches(0.62), Inches(1.82), [
 stat(s, Inches(8.7), Inches(1.85), Inches(4.0), f"{gt:.2f} %",
      "difference in step time between\none GH200 and eight v5e chips", big=40)
 stat(s, Inches(8.7), Inches(3.15), Inches(4.0), f"{load_x:.1f}×",
-     f"faster checkpoint load from one\nmanifest line — {wall_cut:.0f} % off wall clock", big=40)
+     f"faster checkpoint load from one\nmanifest line, {wall_cut:.0f} % off wall clock", big=40)
 fig(s, "slide4-comparison.png", Inches(0.62), Inches(4.28), Inches(7.4))
 
 panel(s, Inches(8.7), Inches(4.55), Inches(4.0), Inches(2.2))
@@ -366,17 +366,17 @@ txt(s, Inches(9.0), Inches(4.75), Inches(3.5), Inches(0.3),
     "The control", 13, bold=True, color=ORANGE)
 txt(s, Inches(9.0), Inches(5.12), Inches(3.5), Inches(1.6),
     "Median step time before and\nafter the cache:\n\n"
-    "1.75122 s  →  1.75117 s\n\n"
-    "The computation did not move.\nOnly I/O did — so the saving is\nattributable, not noise.", 11.5, gap=2)
+    "1.75122 s  to  1.75117 s\n\n"
+    "The computation did not move.\nOnly I/O did, so the saving is\nattributable, not noise.", 11.5, gap=2)
 
 notes(s, """
-LUIS  (~85 s — this is the slide to spend time on)
+LUIS  (~85 s, the slide to spend time on)
 
 "Same model, same batch, same sequence length, same script. The only thing that
 changes across these columns is the silicon.
 
 The headline is the two accelerator columns. One GH200 matches an eight-chip TPU
-slice to within a quarter of a percent. Not eight times slower — the same.
+slice to within a quarter of a percent. Not eight times slower, the same.
 
 But read the memory row before you conclude anything about TPUs. At batch one the
 job uses five percent of the GPU and seven percent of the TPU. Neither accelerator
@@ -384,20 +384,20 @@ is busy. The workload is latency-bound, so the extra seven chips have nothing to
 do. This is a statement about our operating point, not about the v5e being slow.
 
 Then the result I am proudest of, on the right. We identified checkpoint load as
-the largest single phase, enabled the gcsfuse file cache — one line in the
-manifest — and re-ran. Load dropped fourteen and a half times. Total wall clock
+the largest single phase, enabled the gcsfuse file cache, one line in the
+manifest, and re-ran. Load dropped fourteen and a half times. Total wall clock
 fell by thirty-one percent.
 
 And the control is what makes it conclusive: median step time went from 1.75122
 seconds to 1.75117. Identical to the fourth decimal. The computation did not
-change at all. Only I/O moved — which is why we can attribute the saving to the
+change at all. Only I/O moved, which is why we can attribute the saving to the
 cache rather than to noise. That is the difference between measuring and
 demonstrating."
 
 → hand back to Leonard.
 """)
 
-# ============================== 5 — Conclusion =================================
+# ============================== 5. Conclusion =================================
 s = slide(5, "Conclusion", "The chip was never the bottleneck.")
 
 findings = [
@@ -406,8 +406,8 @@ findings = [
      f"Of {bp['total_wall_s']:.0f} s, only {bp['steady_state_s']:.0f} s computes.\n"
      "The biggest single phase is\nreading the checkpoint."),
     ("6.7×",
-     "more parameters — CPU stopped",
-     "0.6B → 4B did not make the CPU\n6.7× slower. XLA never finished\n"
+     "more parameters, CPU stopped",
+     "0.6B to 4B did not make the CPU\n6.7× slower. XLA never finished\n"
      "compiling; the kernel killed it\nat 31.5 GB."),
     ("1 of 36",
      "dependencies were TPU-bound",
@@ -424,7 +424,7 @@ for i, (big, cap, body) in enumerate(findings):
 txt(s, Inches(0.62), Inches(4.8), Inches(5.9), Inches(0.35),
     "Scaling recommendation", 15, bold=True, color=ORANGE)
 txt(s, Inches(0.62), Inches(5.18), Inches(5.9), Inches(1.4),
-    "Do not scale out — amortise. Raise batch only until\n"
+    "Do not scale out. Amortise: raise batch only until\n"
     "the chip is occupied, then attack fixed cost:\n"
     "persistent compile caches, warm workers instead of\n"
     "a pod per job, file cache on anything reading a\n"
@@ -434,9 +434,9 @@ panel(s, Inches(6.8), Inches(4.72), Inches(5.9), Inches(1.85))
 txt(s, Inches(7.1), Inches(4.9), Inches(5.4), Inches(0.35),
     "What this means for Dr. Findus", 15, bold=True, color=ORANGE)
 txt(s, Inches(7.1), Inches(5.28), Inches(5.4), Inches(1.2),
-    f"At ${k_gpu:.3f} per 1 000 steps on one GH200 —\n"
+    f"At ${k_gpu:.3f} per 1 000 steps on one GH200,\n"
     f"{k_tpu / k_gpu:.0f}× cheaper than eight TPU chips at the same\n"
-    "speed — self-hosting is not the cost problem we\n"
+    "speed, self-hosting is not the cost problem we\n"
     "assumed. The real cost is fixed overhead per job:\n"
     "an architecture decision, not a hardware purchase.", 12.5, gap=2)
 
@@ -454,7 +454,7 @@ of wall clock, only twenty-eight percent is arithmetic. The single largest phase
 is reading the checkpoint. We spent most of our time not computing.
 
 Second, and this genuinely surprised us: scaling the model did not scale the
-cost. Going from 0.6 to 4 billion parameters — under seven times — did not make
+cost. Going from 0.6 to 4 billion parameters, under seven times, did not make
 the CPU seven times slower. It made it impossible. The compiler never finished
 with rematerialisation on, and the kernel killed the process without it. A
 speedup chart would have drawn a bar. The truth is there is no bar.
@@ -465,13 +465,13 @@ cross-build, a missing wheel, absent credentials and a registry rejection.
 Exactly one of the framework's thirty-six dependencies is TPU-bound. Swapping
 that one is the entire port.
 
-So the recommendation is not to scale out — it is to amortise. Raise the batch
+So the recommendation is not to scale out, it is to amortise. Raise the batch
 only until the chip is occupied, then attack fixed cost.
 
 And for our startup, that is the answer we came for. Thirteen cents per thousand
 steps on a single GH200, eight times cheaper than the TPU slice at the same
 speed. Self-hosting is not the cost problem we assumed it was. The real cost is
-fixed overhead per job — and that is an architecture decision, not a hardware
+fixed overhead per job, and that is an architecture decision, not a hardware
 purchase.
 
 Happy to take questions."
@@ -479,6 +479,6 @@ Happy to take questions."
 
 prs.save(OUT)
 n = len(prs.slides._sldIdLst)
-print(f"wrote {OUT.relative_to(REPO)} — {n} slides, {OUT.stat().st_size // 1024} KB")
+print(f"wrote {OUT.relative_to(REPO)}, {n} slides, {OUT.stat().st_size // 1024} KB")
 if gpu_sweep:
-    print(f"GPU sweep cells available: {[b for b, _ in gpu_sweep]} — rerun to fold them in")
+    print(f"GPU sweep cells available: {[b for b, _ in gpu_sweep]}, rerun to fold them in")
