@@ -18,6 +18,7 @@ by the panel it sits in.
 from __future__ import annotations
 
 import json
+import textwrap
 from pathlib import Path
 
 from PIL import Image
@@ -261,7 +262,36 @@ def fig(s, name, x, y, width):
 
 
 def notes(s, t):
-    s.notes_slide.notes_text_frame.text = t.strip()
+    """Set speaker notes, reflowed after interpolation.
+
+    The notes are f-strings, so substituting a value mid-sentence leaves the
+    source's hard wraps in the wrong places. Rewrap here: cue lines in brackets
+    and the header lines stay on their own line, bullets keep a hanging indent,
+    everything else is a paragraph.
+    """
+    HEAD = ("LEONARD", "LUIS", "TIMING", "IF ASKED", "→", "Hand back", "Read at")
+    out, unit, kind = [], [], "para"
+
+    def flush():
+        if unit:
+            text = " ".join(unit)
+            out.append(text if kind == "head" else textwrap.fill(
+                text, 84, subsequent_indent="  " if kind == "bullet" else ""))
+            unit.clear()
+
+    for line in t.strip().split("\n"):
+        st = line.strip()
+        if not st:
+            flush(); out.append(""); kind = "para"; continue
+        if st.startswith("·"):
+            flush(); kind = "bullet"
+        elif st.startswith("[") or st.startswith(HEAD):
+            flush(); kind = "head"
+        elif kind == "head":
+            flush(); kind = "para"
+        unit.append(st)
+    flush()
+    s.notes_slide.notes_text_frame.text = "\n".join(out).strip()
 
 
 # ============================== 1. Problem ====================================
@@ -296,40 +326,31 @@ txt(s, Inches(0.62), Inches(6.42), Inches(12.0), Inches(0.7),
     22, bold=True)
 
 notes(s, f"""
-LEONARD  ~2:15   ·   full deck runs ~12 min; the [cut] blocks take it to ~8
+LEONARD  ~55 s   ·   deck is budgeted to 6:00, see the timing note on slide 5
 
-"Some context first, because it explains why we picked this workload.
+"We run Dr. Findus, a startup in Berlin. German GPs have to attach ICD-10 codes to
+every consultation. We propose the codes, the physician confirms each one. Today
+that runs on hosted APIs, and the question we could not answer was whether it
+could run on our own hardware.
 
-We run a startup called Dr. Findus. German GPs have to attach billing and ICD-10
-codes to every single consultation. We read the clinical note and propose the
-codes, the physician confirms each one before anything is written, which is a
-legal requirement here. For us reliability is the product: over-coding is not a
-bug, it is fraud exposure. [cut]
+[left card, then the grey line right]
+So we built it and measured it: a LoRA fine-tune of Qwen3-4B on CodiEsp,
+{n_train} Spanish clinical case reports with ICD-10 codes attached, eight
+gigabytes of weights before a single activation.
 
-Today that runs on hosted APIs. The question we could not answer was whether it
-could run on our own hardware, and what that would cost. That is an
-infrastructure question, not a model question, so we built the workload and
-measured it instead of guessing.
+[the bars]
+And the data sets the first constraint. At 512 tokens only
+{100 * (1 - trunc[512]['frac_truncated']):.0f} percent of cases fit uncut. We
+benchmark at 1024, the orange bar, where
+{100 * (1 - trunc[1024]['frac_truncated']):.0f} percent fit. Doubling the window
+fixes the rest and costs memory and time. That trade-off is slide four."
 
-[point at the left card, then the grey line on the right]
-The workload is a LoRA fine-tune of Qwen3-4B on CodiEsp: {n_train} training and
-{n_dev} development case reports, real Spanish clinical text with ICD-10 codes
-attached. Eight gigabytes of weights before a single activation.
-
-[point at the bar chart, bottom right]
-And this is the first infrastructure decision the data forces on us. The bars are
-how much of the corpus survives uncut at each context window. At 512 tokens only
-{100 * (1 - trunc[512]['frac_truncated']):.0f} percent of cases fit, so most of
-the labels are simply cut off. At 2048 almost everything fits. We benchmark at
-1024, the orange bar, where about
-{100 * (1 - trunc[1024]['frac_truncated']):.0f} percent fits, because that is the
-honest middle: {cut_1024:.0f} percent of cases still get truncated, and doubling
-the window to fix it is exactly the kind of choice that costs memory and time.
-Slide four shows what it costs.
-
-To be clear about what is being graded: accuracy earns no marks and we report
-none. What we studied is where the time goes, and what it takes to run the job at
-all."
+IF ASKED
+· Why this dataset: reliability is the product for us, over-coding is fraud
+  exposure, so a self-hosted model is a compliance question as much as a cost one.
+· Accuracy: none is claimed or measured. {n_dev} dev documents exist and
+  evaluate.py was never run. The rubric awards nothing for it and neither do we.
+· CodiEsp is CC-BY 4.0, real clinical text, de-identified at source.
 """)
 
 # ============================== 2. Approach ===================================
@@ -367,33 +388,35 @@ txt(s, Inches(0.62), Inches(6.55), Inches(12.0), Inches(0.5),
     16, bold=True, color=ORANGE)
 
 notes(s, """
-LEONARD  ~1:45
+LEONARD  ~55 s
 
-"The architecture is deliberately one code path. A single JAX program, and XLA
-lowers it to three different backends. No per-backend reimplementation, which is
-what makes the comparison honest, because all three run literally the same code.
+"One code path. A single JAX program, and XLA lowers it to all three backends.
+Nothing branches on hardware, which is what makes the comparison honest.
 
-[walk the three cards left to right]
-[cut] Compilation: one program, LoRA applied with qwix, trained through Tunix.
-Orchestration: three pinned Docker images, Kubernetes Jobs across two clusters,
-and Kueue for admission on the TPU pool. Every manifest states its CPU, memory
-and accelerator limits explicitly, so nothing gets scheduled by accident.
+[the three cards]
+Three pinned Docker images, Kubernetes Jobs across two clusters, Kueue for
+admission on the TPU pool, and every manifest states its limits explicitly.
 
-[point at the orange strip across the middle]
-This strip is the data path, and it is where one of our two headline results
-comes from. The eight-gigabyte checkpoint lives in a bucket in the same region,
-gets mounted into the pod by the gcsfuse CSI driver, and is read from /gcs at
-startup. We deliberately left the file cache on that mount as a knob instead of
-fixing it, because that knob turned out to be the experiment. Luis comes back to
-it on slide four.
+[the strip across the middle]
+This is the data path. An eight-gigabyte checkpoint in a bucket, mounted into the
+pod by the gcsfuse CSI driver, read from /gcs at startup. We left the file cache
+on that mount as a knob rather than fixing it, and that knob became the
+experiment. Luis comes back to it.
 
-[point at the table, GPU row]
-One line to flag before I hand over. The GH200's host processor is ARM64, not
-x86. That single fact cost us five separate blockers, and it is why the GPU row
-reads 'public image plus ConfigMap' where the TPU row reads 'private registry'.
-I will come back to it at the end."
+[table, GPU row]
+One line before I hand over. The GH200's host processor is ARM64, not x86. That
+single fact cost us five separate blockers."
 
 → hand over to Luis.
+
+IF ASKED
+· The five blockers: no aarch64 libtpu wheel, a segfaulting QEMU cross-build, no
+  credentials for the private registry, a 403 from it, and a base image that was
+  amd64-only. Fix was to delete the registry from the design: public base image,
+  source from a ConfigMap, dependencies from PyPI, HF and Zenodo.
+· Why two clusters: the TPU pool is GKE in us-west4, the GH200 is on-prem at
+  Stanford. Same manifests, different admission.
+· Kueue LocalQueue is student-queue; the CPU plane is bare podman, no scheduler.
 """)
 
 # ============================== 3. Measurements ================================
@@ -438,45 +461,39 @@ txt(s, Inches(6.40), y + Inches(2.02), Inches(6.30), Inches(0.6),
     13.5, bold=True, color=ORANGE, gap=2)
 
 notes(s, f"""
-LUIS  ~2:30
+LUIS  ~65 s
 
-"We did not measure total runtime and divide by steps.
+"We did not time the job and divide by steps.
 
-[point at the left table, top to bottom]
-Four quantities, each with a named instrument. Chip utilisation is sampled from
-nvidia-smi inside the pod once a second, {n_samp} samples on the run you are
-looking at, and from psutil on the CPU node. Peak memory comes from JAX's own
-memory_stats on the accelerators and from peak resident set size on the CPU. The
-TPU is the honest gap here: JAX gives us its memory statistics but exposes no core
-utilisation counter at all, which is why that cell on the next slide says so
-instead of showing a number that would mean something else.
-[cut] Step times are reported as median, p10 and p90
-with the warmup steps excluded, {warm} of them on this run, never as a mean,
-because the first step carries the compile and would poison the average. And the
-wall clock is decomposed into six phases that are required to sum
-back to the total; whatever is left over is written to a field called 'other'
-rather than quietly dropped.
+[left table]
+Four quantities, each with a named instrument. Utilisation from nvidia-smi once a
+second inside the pod, psutil on the CPU node. Peak memory from JAX's own
+memory_stats, peak RSS on the CPU. Step times as median and percentiles, warmup
+excluded. And the wall clock split into six phases that are required to sum back
+to the total.
 
-[point at the bar at the top right]
-That decomposition is this bar, for one real run: {bp['total_wall_s']:.0f} seconds
-of wall clock, left to right. Scheduling, then the big grey block, which is
-{load_pct:.0f} percent of the run just reading the checkpoint. Then XLA compile
-above the bar. The orange block, {compute_pct:.0f} percent, is the only part that
-is arithmetic. That single picture is the whole finding of this project.
+[the bar]
+That is this bar: {bp['total_wall_s']:.0f} seconds, left to right.
+{load_pct:.0f} percent of it is just reading the checkpoint. Only the orange
+block, {compute_pct:.0f} percent, is arithmetic.
 
-[point at the table underneath]
-Memory: for each backend, the largest configuration that fitted and the one that
-did not. Two thirds occupancy on all three, and one batch step later, all three
-are dead. We keep those failed cells rather than dropping them, because the
-failure boundary is exactly what a memory chart needs.
+[table underneath]
+And memory is what ends every sweep: the largest configuration that fitted, and
+the batch that killed it. We keep the failed cells.
 
-[point at the red box, left]
-Last, the part I would defend hardest. One run came back at ninety-three
-microseconds per step, eleven million tokens a second. Physically impossible, and
-it carried a passing status. What caught it was that the telemetry module had
-written into its own notes field that it might have timed dispatch instead of
-completion. We threw the run away and repeated it. A passing status is not
-sufficient to trust a record."
+[red box]
+One run came back at eleven million tokens a second carrying a passing status.
+Its own notes field caught it. A passing status is not enough to trust a record."
+
+IF ASKED
+· The lie in detail: 93 µs per step, which is dispatch time, not completion. The
+  telemetry module had written the suspicion into notes itself. Discarded, re-run.
+· No TPU utilisation counter exists in JAX, only memory statistics. That is why
+  the cell on slide 4 says so rather than showing a different quantity.
+· Warmup excluded is {warm} steps on this run, 2 on the CPU, 5 on the GPU. Never a
+  mean, because the first step carries the compile.
+· Unattributed time goes to an 'other' field rather than being dropped. Residual
+  after reassembly is under 1.1e-13 s on all 8 records.
 """)
 
 # ============================== 4. Results ====================================
@@ -513,45 +530,47 @@ card(s, Inches(8.45), Inches(5.02), Inches(4.25),
      title_size=14, body_size=13, gap=3)
 
 notes(s, f"""
-LUIS  ~2:40   ·   the slide to spend time on, do not cut here
+LUIS  ~90 s   ·   the slide to spend time on
 
-"Two comparisons here, and the second one contradicts the first. That is the
-point of the slide.
+"Two comparisons, and the second contradicts the first.
 
-[point at the top table, row by row]
-The table is all three backends on identical code, identical model, identical
-batch. Median step time: nineteen seconds on the CPU, eighty milliseconds on each
-accelerator. That is {sp_g:.0f} times on the GPU and {sp_t:.0f} times on the TPU
-slice, third row. Now look at the fourth row, because that is the row that
-actually matters. Mean chip utilisation: {u_gpu:.1f} percent on the GH200. The
-accelerator is idle for essentially the whole run. Peak memory, bottom row, is
-{m_gpu:.0f} and {m_tpu:.0f} percent. Neither chip is doing anything.
+[top table]
+All three backends, identical code, identical batch. Nineteen seconds a step on
+the CPU, eighty milliseconds on both accelerators. That is {sp_g:.0f} times.
 
-[point at the bold line under the table]
-So the two accelerators tie to within a quarter of a percent, and for a while we
-thought that tie was the headline. It was an artefact. At batch one what we were
-comparing was launch latency, not compute.
+[fourth row]
+But look at utilisation: {u_gpu:.1f} percent on the GH200. And peak memory,
+{m_gpu:.0f} and {m_tpu:.0f} percent. Neither chip is doing anything. The two tie
+to within a quarter of a percent, and that tie is an artefact: at batch one we
+were comparing launch latency, not compute.
 
-[point at the chart]
-This is the same two chips at four billion parameters, with the batch size swept
-until they died. Orange is one GH200, blue is eight TPU chips. The Hopper climbs
-from {g8:,.0f} to {g32:,.0f} tokens a second. The blue line is flat at about
-{t8:,.0f}, which means the slice saturated at batch eight and the extra work
-bought nothing at all. At batch 32 the blue line stops, because the slice runs out
-of memory a full step before the GPU does.
+[the chart]
+Same two chips at four billion parameters, batch swept until they died. Orange,
+one GH200, climbs from {g8:,.0f} to {g32:,.0f} tokens a second. Blue, eight TPU
+chips, is flat at {t8:,.0f}: saturated at batch eight, the extra work bought
+nothing. And it runs out of memory a full step before the GPU.
 
-So: {load_ratio:.1f} times the throughput of eight TPU chips, from one Hopper chip,
-big number top right. The batch-one tie was not wrong, it was measured at an
-operating point where the answer is meaningless.
+So {load_ratio:.1f} times the throughput of eight TPU chips, from one Hopper chip.
+Same hardware, opposite conclusion, because the first measurement was taken where
+the answer is meaningless.
 
-[point at the bottom right card]
-And the controlled experiment. We had identified checkpoint load as the largest
-phase, so we turned on the gcsfuse file cache and re-ran the identical job. Load
-got {load_x:.1f} times faster, total wall clock fell {wall_cut:.0f} percent. The
-control is the last line: median step time is unchanged to the fourth decimal.
-Nothing about the computation moved. Only I/O did."
+[bottom right]
+And the controlled experiment. Checkpoint load was the largest phase, so we turned
+on the gcsfuse file cache and re-ran. Load {load_x:.1f} times faster, wall clock
+down {wall_cut:.0f} percent. The control: median step time unchanged to the fourth
+decimal. Only I/O moved."
 
 Hand back to Leonard.
+
+IF ASKED
+· Why the GH200 wins under load: identical step speed at batch 1, but the slice
+  stops scaling at batch 8 while the Hopper keeps going, and the slice pays 8
+  chips for it.
+· Sequence length: 512 to 2048 grows step time as seq^1.30 with peak HBM flat.
+  Remat trades capacity for time.
+· Batch 16 on the TPU is 1.8 % slower per token than batch 8, so the batch the
+  HBM ceiling forbids was not worth having anyway.
+· File cache: fileCacheCapacity 0 to 20Gi on the gcsfuse mount, range reads cached.
 """)
 
 # ============================== 5. Conclusion =================================
@@ -606,52 +625,51 @@ txt(s, Inches(0.62), Inches(6.98), Inches(12.1), Inches(0.30),
     11, color=GREY, align=PP_ALIGN.CENTER)
 
 notes(s, f"""
-LEONARD  ~2:50
+LEONARD  ~85 s
 
-"Three findings, and then what it means for us.
+"Three findings.
 
-[point at the first card]
-First, the chip was never the bottleneck. Of {bp['total_wall_s']:.0f} seconds of
-wall clock, only {compute_pct:.0f} percent is arithmetic, and the single largest
-phase, {load_pct:.0f} percent, is reading the checkpoint. We spent most of our
-time not computing.
+[first card]
+The chip was never the bottleneck. Of {bp['total_wall_s']:.0f} seconds,
+{compute_pct:.0f} percent is arithmetic. The largest single phase is reading a
+checkpoint.
 
 [second card]
-Second, and this genuinely surprised us: scaling the model did not scale the
-cost. Going from 0.6 to 4 billion parameters, under seven times, did not make the
-CPU seven times slower. It made it impossible. The compiler never finished with
-rematerialisation on, and the kernel killed the process without it, at 31.5
-gigabytes against a 31 gibibyte machine. A speedup chart would have drawn a bar
-there. The truth is there is no bar, and that discontinuity is the result.
+Scaling the model did not scale the cost. Under seven times more parameters did
+not make the CPU seven times slower, it made it impossible: the compiler never
+finished, and without rematerialisation the kernel killed it at 31.5 gigabytes. A
+speedup chart would have drawn a bar there. There is no bar.
 
 [third card]
-Third, and this is where the days actually went: the wall was in the supply
-chain, not the silicon. The GH200 sat idle while we worked through an ARM64 host,
-a segfaulting cross-build, a missing aarch64 wheel, absent credentials and a
-registry rejection. Exactly one of the framework's thirty-six dependencies is
-TPU-bound. Swapping that one pin is the entire port.
+And the wall was in the supply chain, not the silicon. Exactly one of the
+framework's thirty-six dependencies is TPU-bound. Swapping that one pin is the
+whole port.
 
-[point at the recommendation, bottom left]
-[cut if slide 4 landed it] So the recommendation is not to scale out, it is to
-amortise. Raise the batch only
-until the chip is occupied, then attack fixed cost: cache the compilation, keep
-workers warm instead of one pod per job, and turn on the file cache anywhere you
-read a checkpoint.
+[bottom left]
+So: do not scale out, amortise. Raise the batch until the chip is occupied, then
+attack fixed cost.
 
-[point at the orange box, bottom right]
-And for our startup, that is the answer we came for. Note the batch this is quoted
-at: batch eight, which is the slice's own best operating point, not the one where
-it looks worst. Even there, one GH200 is {g8 / t8:.1f} times faster than the eight
-chips and costs {cost_ratio_4b:.0f} times less per thousand steps, ${k4_gpu:.2f}
-against ${k4_tpu:.2f}. One caveat we want to state ourselves: the TPU rate is what we were
-actually billed, the GH200 rate is a market proxy because the hardware is
-on-premises and Google does not sell one. We checked the ordering across the whole
-published price range for that chip and it does not flip.
+[orange box]
+For us, that is the answer. At batch eight, the slice's own best point, one GH200
+is {g8 / t8:.1f} times faster and {cost_ratio_4b:.0f} times cheaper. The TPU rate
+is what we were billed, the GH200 is a market proxy, and the ordering holds across
+its whole published price range.
 
-Self-hosting is not the cost problem we assumed it was. The real cost is fixed
-overhead per job, and that is an architecture decision, not a hardware purchase.
+Self-hosting was not the cost problem. Fixed overhead per job is. Thank you."
 
-Happy to take questions."
+TIMING   55 s · 55 s · 65 s · 90 s · 85 s   =   5:50 spoken, ~6:00 with handovers.
+Read at ~135 words a minute. The IF ASKED blocks are not part of the 6 minutes.
+
+IF ASKED
+· Biggest remaining win: a persistent XLA compile cache. Already plumbed and
+  deliberately left off so the compile cost stays visible. Targets 26 to 32 % of
+  wall clock across the runs we have.
+· Why not more nodes: at {u_gpu:.1f} % utilisation there is nothing to parallelise.
+  Scaling out multiplies the fixed cost we just identified.
+· What we would do differently: check egress from inside the cluster, not from the
+  node. That one unchecked inference nearly cost us the GPU row entirely.
+· 4B on CPU: keep remat and XLA never finishes compiling, over 64 minutes single
+  threaded. Drop it and the kernel OOM-kills at 31.5 GB against 31 GiB.
 """)
 
 prs.save(OUT)
