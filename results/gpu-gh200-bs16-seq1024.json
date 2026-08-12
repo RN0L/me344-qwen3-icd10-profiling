@@ -1,0 +1,205 @@
+{
+  "run_id": "gpu-gh200-bs16-seq1024",
+  "backend": "gpu",
+  "timestamp_utc": "2026-08-12T19:22:24Z",
+  "hardware": {
+    "label": "NVIDIA GH200 480GB",
+    "chips": 1,
+    "chip_model": "GH200",
+    "host_arch": "aarch64",
+    "hbm_per_chip_bytes": 102625181696.0
+  },
+  "config": {
+    "model": "Qwen/Qwen3-4B",
+    "batch_size": 16,
+    "seq_len": 1024,
+    "lora_rank": 32,
+    "lora_alpha": 64.0,
+    "dtype": "bfloat16",
+    "max_steps": 25,
+    "remat": "DECODER",
+    "file_cache_capacity": "none",
+    "lr": 0.001,
+    "seed": 0,
+    "lora_modules": ".*q_proj|.*k_proj|.*v_proj|.*o_proj|.*gate_proj|.*up_proj|.*down_proj",
+    "warmup_steps": 5,
+    "model_path": "/opt/model",
+    "data_root": "/opt/data/train_dev",
+    "dtype_fields_applied": [
+      "dtype",
+      "param_dtype"
+    ],
+    "trainable_lora_params": 66060288,
+    "devices": 1,
+    "step_sync": true
+  },
+  "phases": {
+    "submit_to_running_s": 7.0,
+    "image_pull_s": null,
+    "model_load_s": 4.683655018918216,
+    "compile_s": 61.19913826324046,
+    "steady_state_s": 85.69797078380361,
+    "checkpoint_write_s": 0.0,
+    "other_s": 46.052257023286074,
+    "total_wall_s": 204.63302108924836
+  },
+  "steps": [
+    {
+      "step": 1,
+      "wall_s": 61.19913826324046,
+      "loss": null
+    },
+    {
+      "step": 2,
+      "wall_s": 50.47050140472129,
+      "loss": null
+    },
+    {
+      "step": 3,
+      "wall_s": 1.3033090340904891,
+      "loss": null
+    },
+    {
+      "step": 4,
+      "wall_s": 1.2861689971759915,
+      "loss": null
+    },
+    {
+      "step": 5,
+      "wall_s": 1.3151578810065985,
+      "loss": null
+    },
+    {
+      "step": 6,
+      "wall_s": 1.3104780856519938,
+      "loss": null
+    },
+    {
+      "step": 7,
+      "wall_s": 1.3140800213441253,
+      "loss": null
+    },
+    {
+      "step": 8,
+      "wall_s": 1.3059348999522626,
+      "loss": null
+    },
+    {
+      "step": 9,
+      "wall_s": 1.3328915839083493,
+      "loss": null
+    },
+    {
+      "step": 10,
+      "wall_s": 1.305669650901109,
+      "loss": null
+    },
+    {
+      "step": 11,
+      "wall_s": 1.3050229609943926,
+      "loss": null
+    },
+    {
+      "step": 12,
+      "wall_s": 1.326258309185505,
+      "loss": null
+    },
+    {
+      "step": 13,
+      "wall_s": 1.2975168186239898,
+      "loss": null
+    },
+    {
+      "step": 14,
+      "wall_s": 1.2888708324171603,
+      "loss": null
+    },
+    {
+      "step": 15,
+      "wall_s": 1.3313248888589442,
+      "loss": null
+    },
+    {
+      "step": 16,
+      "wall_s": 1.2819741000421345,
+      "loss": null
+    },
+    {
+      "step": 17,
+      "wall_s": 1.2998446677811444,
+      "loss": null
+    },
+    {
+      "step": 18,
+      "wall_s": 1.3101807730272412,
+      "loss": null
+    },
+    {
+      "step": 19,
+      "wall_s": 1.322866776958108,
+      "loss": null
+    },
+    {
+      "step": 20,
+      "wall_s": 4.072830698918551,
+      "loss": null
+    },
+    {
+      "step": 21,
+      "wall_s": 1.3486428153701127,
+      "loss": null
+    },
+    {
+      "step": 22,
+      "wall_s": 1.3122600470669568,
+      "loss": null
+    },
+    {
+      "step": 23,
+      "wall_s": 1.2904858468100429,
+      "loss": null
+    },
+    {
+      "step": 24,
+      "wall_s": 1.2963006859645247,
+      "loss": null
+    },
+    {
+      "step": 25,
+      "wall_s": 3.669399003032595,
+      "loss": null
+    }
+  ],
+  "steady": {
+    "median_step_s": 1.3103294293396175,
+    "p10_step_s": 1.2903243453707547,
+    "p90_step_s": 1.5807184341363643,
+    "tokens_per_s": 12503.72588232048,
+    "docs_per_s": 12.210669806953593,
+    "warmup_steps_excluded": 5
+  },
+  "memory": {
+    "peak_bytes": 35248930816.0,
+    "capacity_bytes": 102625181696.0,
+    "peak_pct": 34.3472530167261,
+    "source": "max over sampled nvidia-smi --query-gpu=memory.used (191 samples at 1.0s)"
+  },
+  "utilization": {
+    "mean_pct": 23.554973821989527,
+    "max_pct": 100.0,
+    "sample_interval_s": 1.0,
+    "n_samples": 191,
+    "source": "nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits",
+    "mean_memory_pct": 30.230625728567485,
+    "max_memory_pct": 34.3472530167261,
+    "n_probe_errors": 0
+  },
+  "eval": {
+    "micro_f1": null,
+    "n_examples": 0,
+    "note": "not evaluated in this run"
+  },
+  "status": "ok",
+  "error": null,
+  "notes": "no per-step loss could be captured from Tunix; steps[].loss is null rather than a fabricated value | steady.tokens_per_s counts padded tokens (batch_size * seq_len), which is the compute actually performed | checkpoint_write_s is 0.0: --skip-export suppressed the adapter export | phases.other_s is composed of: jax_init=7.59s lora_wrap=16.24s data_prep=2.07s trainer_build=1.57s | phases.image_pull_s is null: it is measured by the launcher from kubectl timestamps, not from inside the pod. Merge it with telemetry.merge_external_phases()."
+}

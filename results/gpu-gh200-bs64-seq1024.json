@@ -1,0 +1,68 @@
+{
+  "run_id": "gpu-gh200-bs64-seq1024",
+  "backend": "gpu",
+  "timestamp_utc": "2026-08-12T19:31:06Z",
+  "hardware": {
+    "label": "NVIDIA GH200 480GB",
+    "chips": 1,
+    "chip_model": "GH200",
+    "host_arch": "aarch64",
+    "hbm_per_chip_bytes": 102625181696.0
+  },
+  "config": {
+    "model": "Qwen/Qwen3-4B",
+    "batch_size": 64,
+    "seq_len": 1024,
+    "lora_rank": 32,
+    "lora_alpha": 64.0,
+    "dtype": "bfloat16",
+    "max_steps": 25,
+    "remat": "DECODER",
+    "file_cache_capacity": "none",
+    "lr": 0.001,
+    "seed": 0,
+    "lora_modules": ".*q_proj|.*k_proj|.*v_proj|.*o_proj|.*gate_proj|.*up_proj|.*down_proj",
+    "warmup_steps": 5,
+    "model_path": "/opt/model",
+    "data_root": "/opt/data/train_dev",
+    "dtype_fields_applied": [
+      "dtype",
+      "param_dtype"
+    ],
+    "trainable_lora_params": 66060288,
+    "devices": 1,
+    "step_sync": true
+  },
+  "phases": {
+    "submit_to_running_s": 7.0,
+    "image_pull_s": null,
+    "model_load_s": 4.248451578896493,
+    "compile_s": 0.0,
+    "steady_state_s": 0.0,
+    "checkpoint_write_s": 0.0,
+    "other_s": 294.5826025218703,
+    "total_wall_s": 305.8310541007668
+  },
+  "steps": [],
+  "steady": null,
+  "memory": null,
+  "utilization": {
+    "mean_pct": 4.364261168384879,
+    "max_pct": 100.0,
+    "sample_interval_s": 1.0,
+    "n_samples": 291,
+    "source": "nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits",
+    "mean_memory_pct": 61.11717784343449,
+    "max_memory_pct": 67.66662239069795,
+    "n_probe_errors": 0
+  },
+  "eval": {
+    "micro_f1": null,
+    "n_examples": 0,
+    "note": "not evaluated in this run"
+  },
+  "status": "oom",
+  "error": "JaxRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 48.34GiB. [tf-allocator-allocation-error=''] [executable_name='jit__train_step']",
+  "notes": "only 7 batches exist for max_steps=25; the trainer loops over multiple epochs | phases.other_s is composed of: jax_init=6.87s lora_wrap=16.29s data_prep=1.92s trainer_build=1.60s | phases.image_pull_s is null: it is measured by the launcher from kubectl timestamps, not from inside the pod. Merge it with telemetry.merge_external_phases(). | Run ended in an out-of-memory failure; steady and memory are null by contract and the phases below cover the run up to the failure point.",
+  "error_traceback": "Traceback (most recent call last):\n  File \"/opt/src/train_qwen3_icd.py\", line 1621, in main\n    train(run)\n  File \"/opt/src/train_qwen3_icd.py\", line 1533, in train\n    trainer.train(timed_train, eval_batches)\n  File \"/opt/deps/tunix/sft/peft_trainer.py\", line 731, in train\n    self.checkpoint_manager.save(\n  File \"/opt/deps/tunix/sft/checkpoint_manager.py\", line 138, in save\n    return self._checkpoint_manager.save(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/checkpoint_manager.py\", line 1541, in save\n    self._checkpointer.save(\n  File \"/opt/deps/orbax/checkpoint/_src/checkpointers/async_checkpointer.py\", line 613, in save\n    commit_ops = asyncio_utils.run_sync(\n                 ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/_src/asyncio_utils.py\", line 100, in run_sync\n    return asyncio.run(_coro_with_registration())\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/runners.py\", line 194, in run\n    return runner.run(main)\n           ^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/runners.py\", line 118, in run\n    return self._loop.run_until_complete(task)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/lib/python3.12/asyncio/base_events.py\", line 687, in run_until_complete\n    return future.result()\n           ^^^^^^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/_src/asyncio_utils.py\", line 91, in _coro_with_registration\n    return await coro\n           ^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/_src/checkpointers/async_checkpointer.py\", line 551, in _save\n    await self._handler.async_save(path, args=ckpt_args) or []  # pyrefly: ignore[bad-argument-type]\n    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/_src/handlers/composite_checkpoint_handler.py\", line 715, in async_save\n    jax.tree.flatten(await asyncio.gather(*save_ops))[0] or []\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/_src/handlers/pytree_checkpoint_handler.py\", line 668, in async_save\n    return await self._handler_impl.async_save(directory, args=args)  # pyrefly: ignore[bad-argument-type]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/_src/handlers/base_pytree_checkpoint_handler.py\", line 700, in async_save\n    commit_futures = await self._async_io_engine.execute_save(requests_to_save)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/_src/serialization/async_io_engine.py\", line 224, in execute_save\n    commit_futures = await asyncio.gather(*serialize_ops)\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/_src/serialization/async_io_engine.py\", line 153, in logging_serialize\n    commit_futures = await serialize\n                     ^^^^^^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/_src/serialization/jax_array_handlers.py\", line 1512, in serialize\n    _serialize_arrays(\n  File \"/opt/deps/orbax/checkpoint/_src/serialization/jax_array_handlers.py\", line 660, in _serialize_arrays\n    return _serialize_arrays_batches_without_dispatcher(\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/_src/serialization/jax_array_handlers.py\", line 541, in _serialize_arrays_batches_without_dispatcher\n    prioritized_values_on_host = replica_slices_transfer_arrays_to_host(\n                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deps/orbax/checkpoint/_src/serialization/replica_slices.py\", line 484, in transfer_arrays_to_host\n    unsliced_data=np.asarray(data),\n                  ^^^^^^^^^^^^^^^^\n  File \"/opt/deps/jax/_src/array.py\", line 414, in __array__\n    return np.asarray(self._value, dtype=dtype, **kwds)  # pyrefly: ignore[no-matching-overload]\n                      ^^^^^^^^^^^\n  File \"/opt/deps/jax/_src/profiler.py\", line 420, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/opt/deps/jax/_src/array.py\", line 623, in _value\n    npy_value, did_copy = self._single_device_array_to_np_array_did_copy()\n                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\njax.errors.JaxRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 48.34GiB. [tf-allocator-allocation-error=''] [executable_name='jit__train_step']\n"
+}

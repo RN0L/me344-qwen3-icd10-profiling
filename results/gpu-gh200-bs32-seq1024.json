@@ -1,0 +1,155 @@
+{
+  "run_id": "gpu-gh200-bs32-seq1024",
+  "backend": "gpu",
+  "timestamp_utc": "2026-08-12T19:26:03Z",
+  "hardware": {
+    "label": "NVIDIA GH200 480GB",
+    "chips": 1,
+    "chip_model": "GH200",
+    "host_arch": "aarch64",
+    "hbm_per_chip_bytes": 102625181696.0
+  },
+  "config": {
+    "model": "Qwen/Qwen3-4B",
+    "batch_size": 32,
+    "seq_len": 1024,
+    "lora_rank": 32,
+    "lora_alpha": 64.0,
+    "dtype": "bfloat16",
+    "max_steps": 25,
+    "remat": "DECODER",
+    "file_cache_capacity": "none",
+    "lr": 0.001,
+    "seed": 0,
+    "lora_modules": ".*q_proj|.*k_proj|.*v_proj|.*o_proj|.*gate_proj|.*up_proj|.*down_proj",
+    "warmup_steps": 5,
+    "model_path": "/opt/model",
+    "data_root": "/opt/data/train_dev",
+    "dtype_fields_applied": [
+      "dtype",
+      "param_dtype"
+    ],
+    "trainable_lora_params": 66060288,
+    "devices": 1,
+    "step_sync": true
+  },
+  "phases": {
+    "submit_to_running_s": 7.0,
+    "image_pull_s": null,
+    "model_load_s": 4.344464462716132,
+    "compile_s": 72.72346956282854,
+    "steady_state_s": 83.32803699700162,
+    "checkpoint_write_s": 0.0,
+    "other_s": 54.77420008042827,
+    "total_wall_s": 222.17017110297456
+  },
+  "steps": [
+    {
+      "step": 1,
+      "wall_s": 72.72346956282854,
+      "loss": null
+    },
+    {
+      "step": 2,
+      "wall_s": 51.07595438603312,
+      "loss": null
+    },
+    {
+      "step": 3,
+      "wall_s": 2.5125870420597494,
+      "loss": null
+    },
+    {
+      "step": 4,
+      "wall_s": 2.49436367303133,
+      "loss": null
+    },
+    {
+      "step": 5,
+      "wall_s": 2.463797662872821,
+      "loss": null
+    },
+    {
+      "step": 6,
+      "wall_s": 2.4816560382023454,
+      "loss": null
+    },
+    {
+      "step": 7,
+      "wall_s": 2.4557023998349905,
+      "loss": null
+    },
+    {
+      "step": 8,
+      "wall_s": 2.4705185857601464,
+      "loss": null
+    },
+    {
+      "step": 9,
+      "wall_s": 2.472737540025264,
+      "loss": null
+    },
+    {
+      "step": 10,
+      "wall_s": 2.4902759133838117,
+      "loss": null
+    },
+    {
+      "step": 11,
+      "wall_s": 2.4791863658465445,
+      "loss": null
+    },
+    {
+      "step": 12,
+      "wall_s": 2.4708122187294066,
+      "loss": null
+    },
+    {
+      "step": 13,
+      "wall_s": 2.4945453703403473,
+      "loss": null
+    },
+    {
+      "step": 14,
+      "wall_s": 2.4788503968156874,
+      "loss": null
+    },
+    {
+      "step": 15,
+      "wall_s": 2.487049404066056,
+      "loss": null
+    }
+  ],
+  "steady": {
+    "median_step_s": 2.479018381331116,
+    "p10_step_s": 2.469036967167631,
+    "p90_step_s": 2.490702859079465,
+    "tokens_per_s": 13218.135148479669,
+    "docs_per_s": 12.908335105937176,
+    "warmup_steps_excluded": 5
+  },
+  "memory": {
+    "peak_bytes": 69577211904.0,
+    "capacity_bytes": 102625181696.0,
+    "peak_pct": 67.79740679057126,
+    "source": "max over sampled nvidia-smi --query-gpu=memory.used (207 samples at 1.0s)"
+  },
+  "utilization": {
+    "mean_pct": 28.115942028985508,
+    "max_pct": 100.0,
+    "sample_interval_s": 1.0,
+    "n_samples": 207,
+    "source": "nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits",
+    "mean_memory_pct": 58.61372188778317,
+    "max_memory_pct": 67.79740679057126,
+    "n_probe_errors": 0
+  },
+  "eval": {
+    "micro_f1": null,
+    "n_examples": 0,
+    "note": "not evaluated in this run"
+  },
+  "status": "ok",
+  "error": null,
+  "notes": "only 15 batches exist for max_steps=25; the trainer loops over multiple epochs | no per-step loss could be captured from Tunix; steps[].loss is null rather than a fabricated value | steady.tokens_per_s counts padded tokens (batch_size * seq_len), which is the compute actually performed | checkpoint_write_s is 0.0: --skip-export suppressed the adapter export | phases.other_s is composed of: jax_init=7.18s lora_wrap=16.13s data_prep=1.95s trainer_build=1.62s | phases.image_pull_s is null: it is measured by the launcher from kubectl timestamps, not from inside the pod. Merge it with telemetry.merge_external_phases()."
+}
