@@ -1,0 +1,131 @@
+# GH200 batch sweep — Qwen3-4B, one pod, many configurations.
+#
+# WHY ONE POD
+# -----------
+# The earlier TPU sweep submitted one Job per cell, and each cell paid Kueue admission
+# plus a cold checkpoint load before it measured anything. On this cluster the model is
+# fetched from Hugging Face at container start, so a per-cell Job would download 8 GB
+# four times over. Batch size only affects the steady-state step and peak memory, so the
+# model is loaded once and the training entry point is invoked per cell inside the same
+# container. Each invocation still writes its own contract-compliant record.
+#
+# WHAT IT ADDS
+# ------------
+# Before this, the GPU column had exactly one data point — batch 1, 5.0 % memory — which
+# is not a saturation curve, and the "one GH200 matches eight v5e chips" result was
+# established only at an operating point where neither accelerator is occupied. This
+# sweep walks batch size until the GH200 runs out of VRAM, at the same model size as the
+# TPU sweep, so the two are finally comparable where the hardware is actually busy.
+#
+# An OOM cell is recorded and the sweep continues: the boundary is the measurement.
+#
+# Rendered with envsubst AND AN EXPLICIT VARIABLE LIST — `envsubst < file` with no list
+# also substitutes the script's own shell variables with empty strings, which previously
+# produced a job that ran for four minutes and then died on an empty argument.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: qwen3-gpu-sweep-${TEAM}
+  namespace: ns-student39
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: sweep
+          image: nvcr.io/nvidia/pytorch:25.01-py3
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              set -uo pipefail
+              started=$(date -u +%s)
+              s2r=$(( started - SUBMIT_EPOCH )); [ "$s2r" -ge 0 ] || s2r=0
+              echo "[setup] $(uname -m); $(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -1)"
+
+              export PIP_ROOT_USER_ACTION=ignore
+              pip install -q --target /opt/deps \
+                "jax[cuda12]==0.10.2" \
+                "flax>=0.11.1" optax orbax-checkpoint chex jaxtyping \
+                "google-metrax>=0.2.3" grain omegaconf numba sympy tenacity \
+                datasets fsspec gcsfs hf_transfer huggingface_hub importlib_resources \
+                jinja2 kagglehub pillow pylatexenc python-dotenv perfetto sentencepiece \
+                tensorflow_datasets tqdm "transformers<=4.57.1" safetensors numpy psutil \
+                "qwix @ git+https://github.com/google/qwix@03b4c1d5040cfa4165f14930b13351a5585717f4" 2>&1 | tail -2
+              pip install -q --target /opt/deps --no-deps \
+                "google-tunix @ git+https://github.com/google/tunix@c00f424b47964758361869233e72ca3b1a73119f" 2>&1 | tail -1
+              export PYTHONPATH=/opt/deps:/opt/src
+              # pip --target leaves the CUDA shared objects importable but invisible to ld.so.
+              export LD_LIBRARY_PATH="$(ls -d /opt/deps/nvidia/*/lib 2>/dev/null | tr '\n' ':')${LD_LIBRARY_PATH:-}"
+              echo "[setup] deps ready $(date -u +%H:%M:%S)"
+              python3 -c "import jax; print('[setup] jax', jax.__version__, jax.devices())" || exit 1
+
+              python3 -c "
+              from huggingface_hub import snapshot_download
+              snapshot_download('${MODEL_NAME}', local_dir='/opt/model', max_workers=8)
+              print('[setup] model downloaded')
+              " || exit 1
+              mkdir -p /opt/data && cd /opt/data \
+                && curl -sSL -o cd.zip "https://zenodo.org/records/3625747/files/train_dev.zip?download=1" \
+                && python3 -c "import zipfile;zipfile.ZipFile('cd.zip').extractall('.')" \
+                && echo "[setup] corpus ready"
+              cd /
+
+              rc=0
+              for BS in ${SWEEP_BATCHES}; do
+                RID="gpu-gh200-bs${BS}-seq${SEQ_LEN}"
+                echo "===== CELL bs=${BS} seq=${SEQ_LEN} ====="
+                python3 -u /opt/src/train_qwen3_icd.py \
+                  --backend gpu \
+                  --model-path /opt/model \
+                  --model-config "$MODEL_CONFIG" \
+                  --model-name "$MODEL_NAME" \
+                  --data-root /opt/data/train_dev \
+                  --out "/tmp/${RID}.json" \
+                  --run-id "$RID" \
+                  --hw-tag gh200 --hw-label "NVIDIA GH200 480GB" --chip-model GH200 \
+                  --batch-size "$BS" --seq-len "$SEQ_LEN" \
+                  --max-steps "$MAX_STEPS" --warmup-steps "$WARMUP_STEPS" \
+                  --lora-rank "$LORA_RANK" --lora-alpha "$LORA_ALPHA" --lr "$LEARNING_RATE" \
+                  --dtype "$DTYPE" --remat "$REMAT" --eval-every "$EVAL_EVERY_N_STEPS" \
+                  --ckpt-dir "/tmp/ckpt-${BS}" --skip-export \
+                  --submit-to-running-s "$s2r" || rc=$?
+                echo "-----BEGIN RESULTS JSON-----"
+                cat "/tmp/${RID}.json" 2>/dev/null || \
+                  printf '{"run_id":"%s","backend":"gpu","status":"error","error":"cell exited without a record","notes":"synthesised by the sweep wrapper"}\n' "$RID"
+                echo "-----END RESULTS JSON-----"
+                rm -rf "/tmp/ckpt-${BS}"
+              done
+              echo "===== SWEEP COMPLETE ====="
+              exit 0
+          env:
+            - { name: SUBMIT_EPOCH, value: "${SUBMIT_EPOCH}" }
+            - { name: MODEL_CONFIG, value: "${MODEL_CONFIG}" }
+            - { name: MODEL_NAME,  value: "${MODEL_NAME}" }
+            - { name: SWEEP_BATCHES, value: "${SWEEP_BATCHES}" }
+            - { name: SEQ_LEN,     value: "${SEQ_LEN}" }
+            - { name: MAX_STEPS,   value: "${MAX_STEPS}" }
+            - { name: WARMUP_STEPS, value: "${WARMUP_STEPS}" }
+            - { name: LORA_RANK,   value: "${LORA_RANK}" }
+            - { name: LORA_ALPHA,  value: "${LORA_ALPHA}" }
+            - { name: LEARNING_RATE, value: "${LEARNING_RATE}" }
+            - { name: DTYPE,       value: "${DTYPE}" }
+            - { name: REMAT,       value: "${REMAT}" }
+            - { name: EVAL_EVERY_N_STEPS, value: "${EVAL_EVERY_N_STEPS}" }
+            # Without this JAX reserves ~75 % of VRAM up front and memory.peak_bytes would
+            # report the allocator's reservation instead of what the step needed. The whole
+            # point of a saturation sweep is that number.
+            - { name: XLA_PYTHON_CLIENT_PREALLOCATE, value: "false" }
+            - { name: HF_HUB_DISABLE_PROGRESS_BARS, value: "1" }
+          resources:
+            requests: { cpu: "8", memory: "48Gi", nvidia.com/gpu: "1" }
+            limits:   { cpu: "16", memory: "96Gi", nvidia.com/gpu: "1" }
+          volumeMounts:
+            - { name: src,  mountPath: /opt/src }
+            - { name: dshm, mountPath: /dev/shm }
+      volumes:
+        - name: src
+          configMap: { name: qwen3-src-${TEAM} }
+        - name: dshm
+          emptyDir: { medium: Memory, sizeLimit: 16Gi }
